@@ -10,6 +10,7 @@ application/xhtml+xml=firefox-developer-edition.desktop
 application/x-extension-xhtml=firefox-developer-edition.desktop
 application/x-extension-xht=firefox-developer-edition.desktop
 application/pdf=okular.desktop
+x-scheme-handler/msteams=teams.desktop
 
 [Added Associations]
 x-scheme-handler/http=firefox-developer-edition.desktop;
