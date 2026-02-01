@@ -1,63 +1,27 @@
-import "periodic_table.js" as PTable
 import QtQuick
+import QtQuick.Layouts
+import QtQuick.Controls
 
 Item {
     id: root
-    readonly property var elements: PTable.elements
-    readonly property var series: PTable.series
-    property real spacing: 6
-    implicitWidth: mainLayout.implicitWidth
-    implicitHeight: mainLayout.implicitHeight
-
-    Column {
-        id: mainLayout
-        anchors.centerIn: parent
-        spacing: root.spacing
-
-        Repeater { // Main table rows
-            model: root.elements
-            
-            delegate: Row { // Table cells
-                id: tableRow
-                spacing: root.spacing
-                required property var modelData
-                
-                Repeater {
-                    model: tableRow.modelData
-                    delegate: ElementTile {
-                        required property var modelData
-                        element: modelData
-                    }
-
-                }
-            }
-            
-        }
-
-        Item {
-            id: gap
-            implicitHeight: 20
-        }
-
-        Repeater { // Main table rows
-            model: root.series
-            
-            delegate: Row { // Table cells
-                id: seriesTableRow
-                spacing: root.spacing
-                required property var modelData
-                
-                Repeater {
-                    model: seriesTableRow.modelData
-                    delegate: ElementTile {
-                        required property var modelData
-                        element: modelData
-                    }
-
-                }
-            }
-            
-        }
-    }
     
+    // This tells the window how big to be based on your image size
+    implicitWidth: timeTableImage.sourceSize.width
+    implicitHeight: timeTableImage.sourceSize.height
+
+    Image {
+        id: timeTableImage
+        anchors.centerIn: parent
+        
+        // REPLACE THIS PATH with the actual path to your image
+        // Make sure to keep the "file://" prefix
+        source: "file:///home/gigabyte/Documents/Sem 4/TT.jpg" 
+        
+        // This ensures the image doesn't stretch weirdly
+        fillMode: Image.PreserveAspectFit
+        
+        // Optional: If your image is too huge, uncomment these lines to limit size:
+        // width: 1000 
+        // height: 600
+    }
 }

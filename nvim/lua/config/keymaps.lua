@@ -24,3 +24,7 @@ vim.keymap.set('v', '<C-Del>', 'd')
 vim.keymap.set('n', '<S-BS>', 'dd')
 vim.keymap.set('i', '<S-BS>', '<C-o>dd')
 vim.keymap.set('v', '<S-BS>', 'd')
+
+
+
+
