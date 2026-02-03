@@ -119,8 +119,8 @@
                 "showOnlyWhenLocked": false,
                 "style": "digital",
                 "styleLocked": "digital",
-                "x": 456.4000000000001,
-                "y": 304
+                "x": 364.5,
+                "y": 281.5
             },
             "weather": {
                 "enable": false,

@@ -1,0 +1,28 @@
+[Desktop Entry]
+FullScreen=false
+
+[General]
+LockSidebar=true
+ShowSidebar=true
+
+[Recent Files]
+File1[$e]=$HOME/hypr-pilot/m4lw/docs/getting-started/dependencies.md
+File10[$e]=$HOME/hypr-pilot/m4lw/docs/usage/themes.md
+File2[$e]=$HOME/hypr-pilot/m4lw/docs/getting-started/install.md
+File3[$e]=$HOME/hypr-pilot/m4lw/docs/getting-started/uninstall.md
+File4[$e]=$HOME/hypr-pilot/m4lw/docs/index.md
+File5[$e]=$HOME/hypr-pilot/m4lw/docs/usage/game-mode.md
+File6[$e]=$HOME/hypr-pilot/m4lw/docs/usage/keybindings.md
+File7[$e]=$HOME/hypr-pilot/m4lw/docs/usage/screenshots.md
+File8[$e]=$HOME/hypr-pilot/m4lw/docs/usage/sidepad.md
+File9[$e]=$HOME/hypr-pilot/m4lw/docs/usage/terminal.md
+Name1[$e]=dependencies.md
+Name10[$e]=themes.md
+Name2[$e]=install.md
+Name3[$e]=uninstall.md
+Name4[$e]=index.md
+Name5[$e]=game-mode.md
+Name6[$e]=keybindings.md
+Name7[$e]=screenshots.md
+Name8[$e]=sidepad.md
+Name9[$e]=terminal.md
