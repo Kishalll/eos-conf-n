@@ -7,9 +7,13 @@ MenuBar=Disabled
 
 [Recent Files]
 File1[$e]=$HOME/Pictures/brbad.jpg
+File2[$e]=$HOME/Downloads/shan sign.jpg
+File3[$e]=$HOME/Downloads/shanpic.jpg
 Name1[$e]=brbad.jpg
+Name2[$e]=shan sign.jpg
+Name3[$e]=shanpic.jpg
 
 [SideBar]
 InformationSplitterSizes=216,259
 IsVisible ViewMode=true
-SideBarSplitterSizes=209,682
+SideBarSplitterSizes=209,505
