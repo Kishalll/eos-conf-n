@@ -1,19 +1,19 @@
 updateInfoAdded=true
 
 [dolphin_detailsmodesettings.upd]
-ctime=1768234400
+ctime=1770396416
 done=rename-leading-padding,rename-side-padding,move-content-display
-mtime=1767733985
+mtime=1770139556
 
 [dolphin_replace_view_mode_with_view_settings_in_toolbar.upd]
-ctime=1768234400
+ctime=1770396416
 done=move-content-display,replace-view-mode-with-view-settings-in-toolbar
-mtime=1767733985
+mtime=1770139556
 
 [dolphin_statusandlocationbarssettings.upd]
-ctime=1768234400
+ctime=1770396416
 done=replace-view-mode-with-view-settings-in-toolbar,25.04-convert-bool-showstatusbar-to-enum-showstatusbar
-mtime=1767733985
+mtime=1770139556
 
 [gtkconfig.upd]
 ctime=1768554195
@@ -21,19 +21,19 @@ done=25.04-convert-bool-showstatusbar-to-enum-showstatusbar,gtk_theme,dont_use_g
 mtime=1768334489
 
 [kcalcrc.upd]
-ctime=1768234405
+ctime=1770396424
 done=remove_deprecated_gtk4_option_v2
-mtime=1767744276
+mtime=1770149900
 
 [kwin-x11.upd]
-ctime=1768554196
+ctime=1770396425
 done=remove_deprecated_gtk4_option_v2,kwin-6.0-reset-active-mouse-screen-x11,kwin-6.0-delete-desktop-switching-shortcuts-x11,kwin-6.0-remove-breeze-tabbox-default-x11,kwin-6.1-remove-gridview-expose-shortcuts-x11,kwin-6.5-showpaint-changes-x11
-mtime=1768334826
+mtime=1769684280
 
 [kwin.upd]
-ctime=1769519684
+ctime=1770396425
 done=kwin-6.5-showpaint-changes-x11,kwin-6.0-reset-active-mouse-screen,kwin-6.0-delete-desktop-switching-shortcuts,kwin-6.0-remove-breeze-tabbox-default,kwin-6.1-remove-gridview-expose-shortcuts,kwin-6.5-showpaint-changes
-mtime=1769499855
+mtime=1769683918
 
 [migrate-calendar-to-plugin-id.upd]
 ctime=1768554195
