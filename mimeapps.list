@@ -1,7 +1,7 @@
 [Added Associations]
 application/json=nvim.desktop;
 application/json5=nvim.desktop;rstudio.desktop;org.kde.kate.desktop;okularApplication_txt.desktop;libreoffice-writer.desktop;vim.desktop;org.kde.kwrite.desktop;
-application/pdf=okularApplication_pdf.desktop;
+application/pdf=firefox-developer-edition.desktop;okularApplication_pdf.desktop;
 application/x-docbook+xml=nvim.desktop;
 application/x-extension-htm=firefox-developer-edition.desktop;
 application/x-extension-html=firefox-developer-edition.desktop;
