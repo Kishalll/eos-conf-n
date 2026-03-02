@@ -29,7 +29,8 @@ if status is-interactive # Commands to run in interactive sessions can go here
     alias cd2 'cd .. && cd ..'
     alias cd3 'cd .. && cd .. && cd ..'
     alias nani 'nano'
-    alias update 'sudo pacman -Syu && yay -Syu'
+    #alias update='sudo pacman -Syu --noconfirm && yay -Syu --noconfirm && hyprpm update -y && hyprpm reload'
+    #alias update 'sudo pacman -Syu && yay -Syu'
     alias nm 'nvim'
     alias nv 'nvim'
     alias storage 'sudo ncdu /'
@@ -40,7 +41,14 @@ if status is-interactive # Commands to run in interactive sessions can go here
 	mkdir -p "$argv[1]"
     	cd "$argv[1]"
      end
-
+    
+    function update
+    	sudo -v
+    	sudo pacman -Syu --noconfirm
+    	yay -Syu --noconfirm
+    	hyprpm update -y
+    	hyprpm reload
+    end
      
 
 
