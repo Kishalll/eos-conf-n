@@ -119,7 +119,7 @@
                 "showOnlyWhenLocked": false,
                 "style": "digital",
                 "styleLocked": "digital",
-                "x": 372,
+                "x": 390,
                 "y": 281.5
             },
             "weather": {
@@ -429,26 +429,6 @@
                     {
                         "size": 1,
                         "type": "notifications"
-                    },
-                    {
-                        "size": 1,
-                        "type": "audio"
-                    },
-                    {
-                        "size": 1,
-                        "type": "mic"
-                    },
-                    {
-                        "size": 1,
-                        "type": "nightLight"
-                    },
-                    {
-                        "size": 1,
-                        "type": "idleInhibitor"
-                    },
-                    {
-                        "size": 1,
-                        "type": "musicRecognition"
                     }
                 ]
             },

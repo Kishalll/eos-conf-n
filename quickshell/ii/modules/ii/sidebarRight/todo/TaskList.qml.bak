@@ -10,7 +10,6 @@ import Quickshell
 Item {
     id: root
     required property var taskList
-    required property var controller
     property string emptyPlaceholderIcon
     property string emptyPlaceholderText
     property int todoListItemSpacing: 5
@@ -77,37 +76,32 @@ Item {
                         }
                         TodoItemActionButton {
                             Layout.fillWidth: false
-                            implicitHeight: 48
                             onClicked: {
-                                root.controller.completeTask(todoItem.modelData.id)
+                                if (!todoItem.modelData.done)
+                                    Todo.markDone(todoItem.modelData.originalIndex);
+                                else
+                                    Todo.markUnfinished(todoItem.modelData.originalIndex);
                             }
                             contentItem: MaterialSymbol {
                                 anchors.centerIn: parent
                                 horizontalAlignment: Text.AlignHCenter
                                 text: todoItem.modelData.done ? "remove_done" : "check"
-                                iconSize: 24
+                                iconSize: Appearance.font.pixelSize.larger
                                 color: Appearance.colors.colOnLayer1
                             }
                         }
-                        Item {
-                            Layout.preferredWidth: 10
-                        }
                         TodoItemActionButton {
                             Layout.fillWidth: false
-                            implicitHeight: 48
                             onClicked: {
-                                root.controller.deleteTask(todoItem.modelData.id)
+                                Todo.deleteItem(todoItem.modelData.originalIndex);
                             }
                             contentItem: MaterialSymbol {
                                 anchors.centerIn: parent
                                 horizontalAlignment: Text.AlignHCenter
                                 text: "delete_forever"
-                                iconSize: 24
+                                iconSize: Appearance.font.pixelSize.larger
                                 color: Appearance.colors.colOnLayer1
                             }
-                        }
-                        Item {
-                            Layout.fillWidth: true
                         }
                     }
                 }

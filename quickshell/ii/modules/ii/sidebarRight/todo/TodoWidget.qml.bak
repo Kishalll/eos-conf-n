@@ -4,21 +4,9 @@ import qs.modules.common.widgets
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "."
 
 Item {
-	id: root
-	TodoController {
-		id: todoController
-	}
-
-	// Pull fresh data from Todoist every 60 seconds
-	Timer {
-		interval: 60000
-		repeat: true
-		running: true
-		onTriggered: todoController.refresh()
-	}
+    id: root
     property var tabButtonList: [{"icon": "checklist", "name": Translation.tr("Unfinished")}, {"name": Translation.tr("Done"), "icon": "check_circle"}]
     property bool showAddDialog: false
     property int dialogMargins: 20
@@ -72,21 +60,22 @@ Item {
             clip: true
             currentIndex: tabBar.currentIndex
 
-            // Unfinished tasks tab
+            // To Do tab
             TaskList {
                 listBottomPadding: root.fabSize + root.fabMargins * 2
                 emptyPlaceholderIcon: "check_circle"
                 emptyPlaceholderText: Translation.tr("Nothing here!")
-                controller: todoController
-                taskList: todoController.unfinishedTasks
+                taskList: Todo.list
+                    .map(function(item, i) { return Object.assign({}, item, {originalIndex: i}); })
+                    .filter(function(item) { return !item.done; })
             }
-            // Completed tasks tab
             TaskList {
                 listBottomPadding: root.fabSize + root.fabMargins * 2
                 emptyPlaceholderIcon: "checklist"
                 emptyPlaceholderText: Translation.tr("Finished tasks will go here")
-                controller: todoController
-                taskList: todoController.finishedTasks
+                taskList: Todo.list
+                    .map(function(item, i) { return Object.assign({}, item, {originalIndex: i}); })
+                    .filter(function(item) { return item.done; })
             }
 
         }
@@ -123,19 +112,8 @@ Item {
             }
         }
 
-        // Small delay so the compositor has time to grant input focus
-        // before we try to grab it for the text field.
-        Timer {
-            id: focusGrabTimer
-            interval: 50
-            repeat: false
-            onTriggered: todoInput.forceActiveFocus()
-        }
-
         onVisibleChanged: {
-            if (visible) {
-                focusGrabTimer.start()
-            } else {
+            if (!visible) {
                 todoInput.text = ""
                 fabButton.focus = true
             }
@@ -166,7 +144,7 @@ Item {
 
             function addTask() {
                 if (todoInput.text.length > 0) {
-                    todoController.addTask(todoInput.text)
+                    Todo.addTask(todoInput.text)
                     todoInput.text = ""
                     root.showAddDialog = false
                     tabBar.setCurrentIndex(0) // Show unfinished tasks
