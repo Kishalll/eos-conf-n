@@ -19,23 +19,14 @@ Item {
 		running: true
 		onTriggered: todoController.refresh()
 	}
-    property var tabButtonList: [{"icon": "checklist", "name": Translation.tr("Unfinished")}, {"name": Translation.tr("Done"), "icon": "check_circle"}]
     property bool showAddDialog: false
     property int dialogMargins: 20
     property int fabSize: 48
     property int fabMargins: 14
 
     Keys.onPressed: (event) => {
-        if ((event.key === Qt.Key_PageDown || event.key === Qt.Key_PageUp) && event.modifiers === Qt.NoModifier) {
-            if (event.key === Qt.Key_PageDown) {
-                tabBar.incrementCurrentIndex();
-            } else if (event.key === Qt.Key_PageUp) {
-                tabBar.decrementCurrentIndex();
-            }
-            event.accepted = true;
-        }
         // Open add dialog on "N" (any modifiers)
-        else if (event.key === Qt.Key_N) {
+        if (event.key === Qt.Key_N) {
             root.showAddDialog = true
             event.accepted = true;
         }
@@ -50,45 +41,17 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        SecondaryTabBar {
-            id: tabBar
-            currentIndex: swipeView.currentIndex
-
-            Repeater {
-                model: root.tabButtonList
-                delegate: SecondaryTabButton {
-                    buttonText: modelData.name
-                    buttonIcon: modelData.icon
-                }
-            }
-        }
-
-        SwipeView {
-            id: swipeView
+        TaskList {
             Layout.topMargin: 10
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 10
             clip: true
-            currentIndex: tabBar.currentIndex
 
-            // Unfinished tasks tab
-            TaskList {
-                listBottomPadding: root.fabSize + root.fabMargins * 2
-                emptyPlaceholderIcon: "check_circle"
-                emptyPlaceholderText: Translation.tr("Nothing here!")
-                controller: todoController
-                taskList: todoController.unfinishedTasks
-            }
-            // Completed tasks tab
-            TaskList {
-                listBottomPadding: root.fabSize + root.fabMargins * 2
-                emptyPlaceholderIcon: "checklist"
-                emptyPlaceholderText: Translation.tr("Finished tasks will go here")
-                controller: todoController
-                taskList: todoController.finishedTasks
-            }
-
+            listBottomPadding: root.fabSize + root.fabMargins * 2
+            emptyPlaceholderIcon: "check_circle"
+            emptyPlaceholderText: Translation.tr("Nothing here!")
+            controller: todoController
+            taskList: todoController.unfinishedTasks
         }
     }
 
@@ -169,7 +132,6 @@ Item {
                     todoController.addTask(todoInput.text)
                     todoInput.text = ""
                     root.showAddDialog = false
-                    tabBar.setCurrentIndex(0) // Show unfinished tasks
                 }
             }
 
