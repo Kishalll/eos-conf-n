@@ -156,8 +156,7 @@
             "memoryWarningThreshold": 95,
             "swapWarningThreshold": 85
         },
-        "screenList": [
-        ],
+        "screenList": [],
         "showBackground": true,
         "tooltips": {
             "clickToShow": true
@@ -184,8 +183,7 @@
         "workspaces": {
             "alwaysShowNumbers": false,
             "monochromeIcons": false,
-            "numberMap": [
-            ],
+            "numberMap": [],
             "showAppIcons": true,
             "showNumberDelay": 300,
             "shown": 5,
@@ -204,10 +202,10 @@
     },
     "cheatsheet": {
         "fontSize": {
-            "comment": 12,
+            "comment": 14,
             "key": 12
         },
-        "splitButtons": true,
+        "splitButtons": false,
         "superKey": "",
         "useFnSymbol": false,
         "useMacSymbol": false,
@@ -225,11 +223,9 @@
         "height": 60,
         "hoverRegionHeight": 2,
         "hoverToReveal": true,
-        "ignoredAppRegexes": [
-        ],
+        "ignoredAppRegexes": [],
         "monochromeIcons": false,
-        "pinnedApps": [
-        ],
+        "pinnedApps": [],
         "pinnedOnStartup": false
     },
     "hacks": {
@@ -518,10 +514,8 @@
             "wallpaper": true
         },
         "triggerCondition": {
-            "fileKeywords": [
-            ],
-            "linkKeywords": [
-            ],
+            "fileKeywords": [],
+            "linkKeywords": [],
             "networkNameKeywords": [
                 "airport",
                 "cafe",
