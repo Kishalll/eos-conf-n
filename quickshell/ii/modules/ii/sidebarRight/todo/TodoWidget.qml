@@ -20,6 +20,7 @@ Item {
 		onTriggered: todoController.refresh()
 	}
     property bool showAddDialog: false
+    property bool needsKeyboardFocus: showAddDialog
     property int dialogMargins: 20
     property int fabSize: 48
     property int fabMargins: 14

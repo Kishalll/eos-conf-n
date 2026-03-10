@@ -49,8 +49,9 @@ if status is-interactive # Commands to run in interactive sessions can go here
     	hyprpm update -y
     	hyprpm reload
     end
-     
-
-
-
+    function cleanup
+	    sudo -v
+	    sudo paccache -rk1
+	    yay -Sc
+     end
 end

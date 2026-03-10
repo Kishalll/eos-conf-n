@@ -20,6 +20,7 @@ import qs.modules.ii.sidebarRight.wifiNetworks
 Item {
     id: root
     property int sidebarWidth: Appearance.sizes.sidebarWidth
+    property bool needsKeyboardFocus: bottomWidgetGroup.needsKeyboardFocus
     property int sidebarPadding: 10
     property string settingsQmlPath: Quickshell.shellPath("settings.qml")
     property bool showAudioOutputDialog: false
@@ -103,6 +104,7 @@ Item {
             }
 
             BottomWidgetGroup {
+                id: bottomWidgetGroup
                 Layout.alignment: Qt.AlignHCenter
                 Layout.fillHeight: false
                 Layout.fillWidth: true

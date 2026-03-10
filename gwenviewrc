@@ -11,11 +11,15 @@ File2[$e]=$HOME/Downloads/shan sign.jpg
 File3[$e]=$HOME/Downloads/shanpic.jpg
 File4[$e]=$HOME/hypr-pilot/HyDE/Source/assets/notif_action_sel.png
 File5[$e]=$HOME/club/Group 11.png
+File6[$e]=$HOME/Downloads/Screenshot_20260310_195506.jpg
+File7[$e]=$HOME/portfol/public/pic.jpg
 Name1[$e]=brbad.jpg
 Name2[$e]=shan sign.jpg
 Name3[$e]=shanpic.jpg
 Name4[$e]=notif_action_sel.png
 Name5[$e]=Group 11.png
+Name6[$e]=Screenshot_20260310_195506.jpg
+Name7[$e]=pic.jpg
 
 [SideBar]
 InformationSplitterSizes=216,259
