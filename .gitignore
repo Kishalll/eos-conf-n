@@ -63,7 +63,7 @@ Upscayl/
 # MISC
 session/
 kiorc
-okuralrc
+okularrc
 gwenviewrc
 kwinrc 
 plasmashellrc
@@ -74,5 +74,10 @@ kactivitymanagerd-statsrc
 powermanagementprofilesrc 
 ktimezonedrc 
 baloofilerc 
-baloofileinformationrc 
 
+baloofileinformationrc 
+kate/externaltools/
+kde-material-you-colors/
+pypoetry/
+dconf/
+autostart/
