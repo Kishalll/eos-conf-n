@@ -28,12 +28,20 @@ kritarc
 Todoist/
 Code/
 Code - OSS/
+vlc/
+pulse/
+htop/
+neofetch/
+haruna/
+mpv/
+qalculate/ 
+gpick/
+guvcview2/
 # DEV TOOLS 
 go/                
 flutter/           
 nextjs-nodejs/      
-systemd/            
-session/            
+systemd/                      
 pulse/              
 wireplumber/        
 Antigravity/
@@ -57,4 +65,14 @@ session/
 kiorc
 okuralrc
 gwenviewrc
+kwinrc 
+plasmashellrc
+plasma-org.kde.plasma.desktop-appletsrc
+plasma-localerc
+kactivitymanagerdrc
+kactivitymanagerd-statsrc 
+powermanagementprofilesrc 
+ktimezonedrc 
+baloofilerc 
+baloofileinformationrc 
 
