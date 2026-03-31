@@ -8,6 +8,7 @@ google-chrome/
 thorium-flags.conf
 
 # HEAVY APPS & CACHE 
+wireshark/
 cava/
 heroic/
 Upscayl/           
@@ -74,7 +75,7 @@ kactivitymanagerd-statsrc
 powermanagementprofilesrc 
 ktimezonedrc 
 baloofilerc 
-
+Trolltech.conf
 baloofileinformationrc 
 kate/externaltools/
 kde-material-you-colors/

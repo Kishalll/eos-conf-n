@@ -150,6 +150,8 @@ toolBarFont=Google Sans Flex,10,-1,5,500,0,0,0,0,0,0,0,0,0,0,1,Medium
 Theme=breeze-plus-dark
 
 [KDE]
+contrast=4
+frameContrast=0.2
 widgetStyle=Darkly
 
 [KFileDialog Settings]
