@@ -38,6 +38,12 @@ mpv/
 qalculate/ 
 gpick/
 guvcview2/
+.node_repl_history_meta/
+Cursor/
+cursor/
+git/
+google-chrome-for-testing/
+
 # DEV TOOLS 
 go/                
 flutter/           

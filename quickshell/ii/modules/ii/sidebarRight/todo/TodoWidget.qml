@@ -93,13 +93,17 @@ Item {
             id: focusGrabTimer
             interval: 50
             repeat: false
-            onTriggered: todoInput.forceActiveFocus()
+            onTriggered: {
+                if (root.showAddDialog)
+                    todoInput.forceActiveFocus();
+            }
         }
 
         onVisibleChanged: {
             if (visible) {
-                focusGrabTimer.start()
+                focusGrabTimer.restart()
             } else {
+                focusGrabTimer.stop()
                 todoInput.text = ""
                 fabButton.focus = true
             }

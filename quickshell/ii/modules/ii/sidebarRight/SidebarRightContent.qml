@@ -20,7 +20,6 @@ import qs.modules.ii.sidebarRight.wifiNetworks
 Item {
     id: root
     property int sidebarWidth: Appearance.sizes.sidebarWidth
-    property bool needsKeyboardFocus: bottomWidgetGroup.needsKeyboardFocus
     property int sidebarPadding: 10
     property string settingsQmlPath: Quickshell.shellPath("settings.qml")
     property bool showAudioOutputDialog: false
@@ -29,6 +28,8 @@ Item {
     property bool showNightLightDialog: false
     property bool showWifiDialog: false
     property bool editMode: false
+    readonly property bool dialogNeedsKeyboardFocus: showAudioOutputDialog || showAudioInputDialog || showBluetoothDialog || showNightLightDialog || showWifiDialog
+    property bool needsKeyboardFocus: dialogNeedsKeyboardFocus || bottomWidgetGroup.needsKeyboardFocus
 
     Connections {
         target: GlobalStates

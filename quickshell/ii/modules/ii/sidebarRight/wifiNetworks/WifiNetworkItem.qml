@@ -55,6 +55,24 @@ DialogListItem {
             Layout.topMargin: 8
             visible: root.wifiNetwork?.askingPassword ?? false
 
+            Timer {
+                id: passwordFocusTimer
+                interval: 0
+                repeat: false
+                onTriggered: {
+                    passwordField.forceActiveFocus();
+                    passwordField.selectAll();
+                }
+            }
+
+            onVisibleChanged: {
+                if (visible) {
+                    passwordFocusTimer.restart();
+                } else {
+                    passwordField.text = "";
+                }
+            }
+
             MaterialTextField {
                 id: passwordField
                 Layout.fillWidth: true
