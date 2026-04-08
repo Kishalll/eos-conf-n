@@ -31,14 +31,19 @@ Item {
     readonly property bool dialogNeedsKeyboardFocus: showAudioOutputDialog || showAudioInputDialog || showBluetoothDialog || showNightLightDialog || showWifiDialog
     property bool needsKeyboardFocus: dialogNeedsKeyboardFocus || bottomWidgetGroup.needsKeyboardFocus
 
+    function resetDialogs() {
+        root.showWifiDialog = false;
+        root.showBluetoothDialog = false;
+        root.showAudioOutputDialog = false;
+        root.showAudioInputDialog = false;
+        root.showNightLightDialog = false;
+    }
+
     Connections {
         target: GlobalStates
         function onSidebarRightOpenChanged() {
             if (!GlobalStates.sidebarRightOpen) {
-                root.showWifiDialog = false;
-                root.showBluetoothDialog = false;
-                root.showAudioOutputDialog = false;
-                root.showAudioInputDialog = false;
+                root.resetDialogs();
             }
         }
     }

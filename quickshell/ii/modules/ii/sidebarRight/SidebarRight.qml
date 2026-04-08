@@ -38,6 +38,8 @@ Scope {
                 GlobalFocusGrab.addDismissable(panelWindow);
             } else {
                 GlobalFocusGrab.removeDismissable(panelWindow);
+                if (sidebarContentLoader.item?.resetDialogs)
+                    sidebarContentLoader.item.resetDialogs();
             }
         }
         Connections {
