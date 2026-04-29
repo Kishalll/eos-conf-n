@@ -116,11 +116,12 @@ Item {
     function sortTasksByDue(taskList) {
         return taskList
             .map(function(task, index) {
+                var priority = normalizePriority(task.priority)
                 return {
                     task: task,
                     index: index,
                     dueTs: dueSortTimestamp(task),
-                    priority: normalizePriority(task.priority)
+                    priority: priority === null ? 99 : priority
                 }
             })
             .sort(function(a, b) {
@@ -128,7 +129,7 @@ Item {
                     return a.dueTs - b.dueTs
 
                 if (a.priority !== b.priority)
-                    return b.priority - a.priority
+                    return a.priority - b.priority
 
                 return a.index - b.index
             })
@@ -166,22 +167,40 @@ Item {
     }
 
     function parseLabels(labelsInput) {
-        if (Array.isArray(labelsInput))
-            return labelsInput
+        var rawLabels = []
 
-        if (!labelsInput)
-            return []
+        if (Array.isArray(labelsInput)) {
+            rawLabels = labelsInput
+        } else if (labelsInput) {
+            rawLabels = labelsInput.split(",")
+        }
 
-        return labelsInput
-            .split(",")
-            .map(function(label) { return label.trim() })
-            .filter(function(label) { return label.length > 0 })
+        var normalized = []
+        var seen = {}
+
+        for (var i = 0; i < rawLabels.length; i++) {
+            var label = (rawLabels[i] || "").toString().trim()
+            if (label.startsWith("#"))
+                label = label.slice(1).trim()
+
+            if (label.length === 0)
+                continue
+
+            var key = label.toLowerCase()
+            if (seen[key])
+                continue
+
+            seen[key] = true
+            normalized.push(label)
+        }
+
+        return normalized
     }
 
     function normalizePriority(priorityInput) {
         var value = Number(priorityInput)
         if (isNaN(value) || value < 1 || value > 4)
-            return 1
+            return null
         return Math.round(value)
     }
 
@@ -189,7 +208,7 @@ Item {
     function addTask(taskInput) {
         var content = ""
         var dueString = ""
-        var priority = 1
+        var priority = null
         var labels = []
 
         if (typeof taskInput === "string") {
@@ -242,7 +261,8 @@ Item {
         if (newContent.length === 0)
             return
 
-        var normalizedPriority = normalizePriority(updates.priority)
+        var hasPriorityUpdate = updates.hasOwnProperty("priority")
+        var normalizedPriority = hasPriorityUpdate ? normalizePriority(updates.priority) : null
         var normalizedLabels = parseLabels(updates.labels)
         var dueRaw = updates.dueString || ""
         var normalizedDue = dueRaw.trim()
@@ -256,20 +276,24 @@ Item {
                 id: t.id,
                 content: newContent,
                 done: t.done,
-                priority: normalizedPriority,
+                priority: hasPriorityUpdate ? normalizedPriority : t.priority,
                 labels: normalizedLabels,
                 due: shouldClearDue ? null : (normalizedDue.length > 0 ? { string: normalizedDue } : t.due),
                 dueString: shouldClearDue ? "" : (normalizedDue.length > 0 ? normalizedDue : (t.dueString || ""))
             }
         })
 
-        api.updateTask(taskId, {
+        var updatePayload = {
             content: newContent,
-            priority: normalizedPriority,
             labels: normalizedLabels,
             dueString: normalizedDue,
             dueClear: shouldClearDue
-        }, function(updatedTask) {
+        }
+
+        if (hasPriorityUpdate && normalizedPriority !== null)
+            updatePayload.priority = normalizedPriority
+
+        api.updateTask(taskId, updatePayload, function(updatedTask) {
             if (updatedTask && updatedTask.id) {
                 tasks = tasks.map(function(t) {
                     if (t.id === taskId)

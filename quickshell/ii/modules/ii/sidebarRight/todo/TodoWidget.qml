@@ -17,6 +17,41 @@ Item {
 	property int fabSize: 48
 	property int fabMargins: 14
 
+	function labelsToInput(labelsValue) {
+		if (labelsValue === null || labelsValue === undefined)
+			return ""
+
+		if (Array.isArray(labelsValue))
+			return labelsValue.join(", ")
+
+		if (typeof labelsValue === "string")
+			return labelsValue
+
+		if (typeof labelsValue.length === "number") {
+			var values = []
+			for (var i = 0; i < labelsValue.length; i++)
+				values.push(labelsValue[i])
+			return values.join(", ")
+		}
+
+		return ""
+	}
+
+	function priorityColor(priority) {
+		var value = Number(priority)
+		if (value === 1)
+			return "#e53935"
+		if (value === 2)
+			return "#fb8c00"
+		if (value === 3)
+			return "#fdd835"
+		return Appearance.m3colors.m3outline
+	}
+
+	function selectedPriorityValue() {
+		return prioritySelector.currentIndex === 0 ? null : prioritySelector.currentIndex
+	}
+
 	function openAddDialog() {
 		isEditMode = false
 		editingTask = null
@@ -37,11 +72,12 @@ Item {
 		editingTask = task
 		todoInput.text = task.content || ""
 		dueInput.text = task.dueString || ""
-		labelsInput.text = Array.isArray(task.labels) ? task.labels.join(", ") : ""
+		labelsInput.text = labelsToInput(task.labels)
 		var priority = Number(task.priority)
 		if (isNaN(priority) || priority < 1 || priority > 4)
-			priority = 1
-		prioritySelector.currentIndex = priority - 1
+			prioritySelector.currentIndex = 0
+		else
+			prioritySelector.currentIndex = priority
 		showAddDialog = true
 	}
 
@@ -55,17 +91,21 @@ Item {
 			return
 
 		var due = dueInput.text.trim()
-		var priority = prioritySelector.currentIndex + 1
+		var priority = prioritySelector.currentIndex === 0 ? null : prioritySelector.currentIndex
 		var labels = labelsInput.text
 
 		if (isEditMode && editingTask) {
-			todoController.editTask(editingTask.id, {
+			var updatePayload = {
 				content: content,
 				dueString: due,
 				clearDue: due.length === 0,
-				priority: priority,
 				labels: labels
-			})
+			}
+
+			if (priority !== null)
+				updatePayload.priority = priority
+
+			todoController.editTask(editingTask.id, updatePayload)
 		} else {
 			todoController.addTask({
 				content: content,
@@ -113,7 +153,7 @@ Item {
             Layout.fillHeight: true
             clip: true
 
-            listBottomPadding: root.fabSize + root.fabMargins * 2
+            listBottomPadding: root.fabSize + root.fabMargins * 2 + 12
             emptyPlaceholderIcon: "check_circle"
             emptyPlaceholderText: Translation.tr("Nothing here!")
             controller: todoController
@@ -173,9 +213,9 @@ Item {
                 todoInput.text = ""
                 dueInput.text = ""
                 labelsInput.text = ""
-                prioritySelector.currentIndex = 0
-                root.isEditMode = false
-                root.editingTask = null
+		prioritySelector.currentIndex = 0
+		root.isEditMode = false
+		root.editingTask = null
                 fabButton.focus = true
             }
         }
@@ -277,14 +317,26 @@ Item {
                     }
                 }
 
-                StyledComboBox {
-                    id: prioritySelector
-                    Layout.fillWidth: true
-                    Layout.leftMargin: 16
-                    Layout.rightMargin: 16
-                    model: ["P1", "P2", "P3", "P4"]
-                    currentIndex: 0
-                }
+				RowLayout {
+					Layout.fillWidth: true
+					Layout.leftMargin: 16
+					Layout.rightMargin: 16
+					spacing: 8
+
+					Rectangle {
+						Layout.preferredWidth: 12
+						Layout.preferredHeight: 28
+						radius: 3
+						color: root.priorityColor(root.selectedPriorityValue())
+					}
+
+					StyledComboBox {
+						id: prioritySelector
+						Layout.fillWidth: true
+						model: ["None", "P1", "P2", "P3", "P4"]
+						currentIndex: 0
+					}
+				}
 
                 TextField {
                     id: labelsInput

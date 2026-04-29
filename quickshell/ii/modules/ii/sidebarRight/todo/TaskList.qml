@@ -18,6 +18,42 @@ Item {
     property int todoListItemPadding: 8
     property int listBottomPadding: 80
 
+    function labelsDisplayText(task) {
+        if (!task || !task.labels || task.labels.length === 0)
+            return ""
+
+        var formatted = []
+        for (var i = 0; i < task.labels.length; i++) {
+            var label = (task.labels[i] || "").toString().trim()
+            if (label.length > 0)
+                formatted.push("#" + label)
+        }
+
+        return formatted.join("  ")
+    }
+
+    function normalizedPriority(task) {
+        if (!task)
+            return null
+
+        var value = Number(task.priority)
+        if (isNaN(value) || value < 1 || value > 4)
+            return null
+
+        return Math.round(value)
+    }
+
+    function priorityColor(task) {
+        var priority = normalizedPriority(task)
+        if (priority === 1)
+            return "#e53935"
+        if (priority === 2)
+            return "#fb8c00"
+        if (priority === 3)
+            return "#fdd835"
+        return Appearance.m3colors.m3outline
+    }
+
     function dueDisplayText(task) {
         if (!task || !task.due)
             return ""
@@ -41,6 +77,104 @@ Item {
             return ""
 
         return Qt.formatDateTime(parsed, "MMM d, ddd  hh:mm AP")
+    }
+
+    function resolveDueDate(task) {
+        if (!task || !task.due)
+            return null
+
+        var due = task.due
+        var phraseDate = parseRelativeDueDate(due.string || "")
+        if (phraseDate)
+            return phraseDate
+
+        if (!due.date)
+            return null
+
+        if (/^\d{4}-\d{2}-\d{2}$/.test(due.date)) {
+            var dateParts = due.date.split("-")
+            return new Date(Number(dateParts[0]), Number(dateParts[1]) - 1, Number(dateParts[2]), 12, 0, 0)
+        }
+
+        var parsed = new Date(due.date)
+        if (isNaN(parsed.getTime()))
+            return null
+
+        return parsed
+    }
+
+    function sameDay(a, b) {
+        return a.getFullYear() === b.getFullYear()
+            && a.getMonth() === b.getMonth()
+            && a.getDate() === b.getDate()
+    }
+
+    function dueBucket(task) {
+        var dueDate = resolveDueDate(task)
+        if (!dueDate)
+            return "no_date"
+
+        var now = new Date()
+        var todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
+
+        if (sameDay(dueDate, now))
+            return "today"
+
+        if (dueDate.getTime() < todayStart.getTime())
+            return "overdue"
+
+        return "upcoming"
+    }
+
+    property var collapsedSections: ({
+        overdue: false,
+        today: false,
+        upcoming: false,
+        no_date: false
+    })
+
+    function toggleSection(sectionKey) {
+        if (!sectionKey)
+            return
+
+        var next = Object.assign({}, collapsedSections)
+        next[sectionKey] = !next[sectionKey]
+        collapsedSections = next
+    }
+
+    function tasksForBucket(bucket) {
+        return taskList.filter(function(task) {
+            return dueBucket(task) === bucket
+        })
+    }
+
+    property var visibleSections: {
+        var sections = [
+            {
+                key: "overdue",
+                title: Translation.tr("Overdue"),
+                tasks: tasksForBucket("overdue")
+            },
+            {
+                key: "today",
+                title: Translation.tr("Today"),
+                tasks: tasksForBucket("today")
+            },
+            {
+                key: "upcoming",
+                title: Translation.tr("Upcoming"),
+                tasks: tasksForBucket("upcoming")
+            },
+            {
+                key: "no_date",
+                title: Translation.tr("No date"),
+                tasks: tasksForBucket("no_date")
+            }
+        ]
+
+        return sections.filter(function(section) {
+            return section.tasks.length > 0
+        })
     }
 
     function parseRelativeDueDate(text) {
@@ -125,123 +259,176 @@ Item {
         anchors.fill: parent
         spacing: root.todoListItemSpacing
         animateAppearance: false
+        bottomMargin: 0
         model: ScriptModel {
-            values: root.taskList
+            values: root.visibleSections
         }
         delegate: Item {
-            id: todoItem
+            id: sectionItem
             required property var modelData
-            property bool pendingDoneToggle: false
-            property bool pendingDelete: false
-            property bool enableHeightAnimation: false
+            readonly property bool collapsed: !!root.collapsedSections[modelData.key]
 
-            implicitHeight: todoItemRectangle.implicitHeight
+            implicitHeight: headerRow.implicitHeight + (collapsed ? 0 : tasksColumn.implicitHeight + root.todoListItemSpacing)
             width: ListView.view.width
-            clip: true
 
-            Behavior on implicitHeight {
-                enabled: enableHeightAnimation
-                NumberAnimation {
-                    duration: Appearance.animation.elementMoveFast.duration
-                    easing.type: Appearance.animation.elementMoveFast.type
-                    easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                }
-            }
-
-            Rectangle {
-                id: todoItemRectangle
+            RowLayout {
+                id: headerRow
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                implicitHeight: todoContentRowLayout.implicitHeight
-                color: Appearance.colors.colLayer2
-                radius: Appearance.rounding.small
+                spacing: 6
 
-                ColumnLayout {
-                    id: todoContentRowLayout
-                    anchors.left: parent.left
-                    anchors.right: parent.right
+                MaterialSymbol {
+                    Layout.alignment: Qt.AlignVCenter
+                    text: sectionItem.collapsed ? "chevron_right" : "expand_more"
+                    iconSize: 20
+                    color: Appearance.colors.colOnLayer1
+                }
 
-                    StyledText {
-                        id: todoContentText
-                        Layout.fillWidth: true // Needed for wrapping
-                        Layout.leftMargin: 10
-                        Layout.rightMargin: 10
-                        Layout.topMargin: todoListItemPadding
-                        text: todoItem.modelData.content
-                        wrapMode: Text.Wrap
-                        font.pixelSize: Appearance.font.pixelSize.normal
-                    }
-                    StyledText {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: 10
-                        Layout.rightMargin: 10
-                        visible: text.length > 0
-                        text: root.dueDisplayText(todoItem.modelData)
-                        color: Appearance.m3colors.m3outline
-                        font.pixelSize: Appearance.font.pixelSize.small
-                    }
-                    RowLayout {
-                        Layout.leftMargin: 10
-                        Layout.rightMargin: 10
-                        Layout.bottomMargin: todoListItemPadding
-                        Item {
-                            Layout.fillWidth: true
+                StyledText {
+                    Layout.fillWidth: true
+                    text: sectionItem.modelData.title
+                    color: Appearance.colors.colPrimary
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    font.bold: true
+                    elide: Text.ElideRight
+                }
+            }
+
+            MouseArea {
+                anchors.fill: headerRow
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    root.toggleSection(sectionItem.modelData.key)
+                }
+            }
+
+            Column {
+                id: tasksColumn
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: headerRow.bottom
+                anchors.topMargin: root.todoListItemSpacing
+                spacing: root.todoListItemSpacing
+                visible: !sectionItem.collapsed
+
+                Repeater {
+                    model: sectionItem.modelData.tasks
+                    delegate: Rectangle {
+                        required property var modelData
+                        width: tasksColumn.width
+                        implicitHeight: todoContentRowLayout.implicitHeight
+                        color: Appearance.colors.colLayer2
+                        radius: Appearance.rounding.small
+
+                        Rectangle {
+                            anchors.left: parent.left
+                            anchors.top: parent.top
+                            anchors.bottom: parent.bottom
+                            width: 4
+                            radius: 2
+                            color: root.priorityColor(modelData)
                         }
-                        TodoItemActionButton {
-                            Layout.fillWidth: false
-                            implicitHeight: 48
-                            onClicked: {
-                                root.editRequested(todoItem.modelData)
+
+                        ColumnLayout {
+                            id: todoContentRowLayout
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+
+                            StyledText {
+                                Layout.fillWidth: true
+                                Layout.leftMargin: 10
+                                Layout.rightMargin: 10
+                                Layout.topMargin: todoListItemPadding
+                                text: modelData.content
+                                wrapMode: Text.Wrap
+                                font.pixelSize: Appearance.font.pixelSize.normal
                             }
-                            contentItem: MaterialSymbol {
-                                anchors.centerIn: parent
-                                horizontalAlignment: Text.AlignHCenter
-                                text: "edit"
-                                iconSize: 24
-                                color: Appearance.colors.colOnLayer1
+                            StyledText {
+                                Layout.fillWidth: true
+                                Layout.leftMargin: 10
+                                Layout.rightMargin: 10
+                                visible: text.length > 0
+                                text: root.dueDisplayText(modelData)
+                                color: Appearance.m3colors.m3outline
+                                font.pixelSize: Appearance.font.pixelSize.small
                             }
-                        }
-                        Item {
-                            Layout.preferredWidth: 10
-                        }
-                        TodoItemActionButton {
-                            Layout.fillWidth: false
-                            implicitHeight: 48
-                            onClicked: {
-                                root.controller.completeTask(todoItem.modelData.id)
+                            StyledText {
+                                Layout.fillWidth: true
+                                Layout.leftMargin: 10
+                                Layout.rightMargin: 10
+                                visible: text.length > 0
+                                text: root.labelsDisplayText(modelData)
+                                color: Appearance.colors.colPrimary
+                                font.pixelSize: Appearance.font.pixelSize.smaller
                             }
-                            contentItem: MaterialSymbol {
-                                anchors.centerIn: parent
-                                horizontalAlignment: Text.AlignHCenter
-                                text: todoItem.modelData.done ? "remove_done" : "check"
-                                iconSize: 24
-                                color: Appearance.colors.colOnLayer1
+                            RowLayout {
+                                Layout.leftMargin: 10
+                                Layout.rightMargin: 10
+                                Layout.bottomMargin: todoListItemPadding
+                                Item {
+                                    Layout.fillWidth: true
+                                }
+                                TodoItemActionButton {
+                                    Layout.fillWidth: false
+                                    implicitHeight: 48
+                                    onClicked: {
+                                        root.editRequested(modelData)
+                                    }
+                                    contentItem: MaterialSymbol {
+                                        anchors.centerIn: parent
+                                        horizontalAlignment: Text.AlignHCenter
+                                        text: "edit"
+                                        iconSize: 24
+                                        color: Appearance.colors.colOnLayer1
+                                    }
+                                }
+                                Item {
+                                    Layout.preferredWidth: 10
+                                }
+                                TodoItemActionButton {
+                                    Layout.fillWidth: false
+                                    implicitHeight: 48
+                                    onClicked: {
+                                        root.controller.completeTask(modelData.id)
+                                    }
+                                    contentItem: MaterialSymbol {
+                                        anchors.centerIn: parent
+                                        horizontalAlignment: Text.AlignHCenter
+                                        text: modelData.done ? "remove_done" : "check"
+                                        iconSize: 24
+                                        color: Appearance.colors.colOnLayer1
+                                    }
+                                }
+                                Item {
+                                    Layout.preferredWidth: 10
+                                }
+                                TodoItemActionButton {
+                                    Layout.fillWidth: false
+                                    implicitHeight: 48
+                                    onClicked: {
+                                        root.controller.deleteTask(modelData.id)
+                                    }
+                                    contentItem: MaterialSymbol {
+                                        anchors.centerIn: parent
+                                        horizontalAlignment: Text.AlignHCenter
+                                        text: "delete_forever"
+                                        iconSize: 24
+                                        color: Appearance.colors.colOnLayer1
+                                    }
+                                }
+                                Item {
+                                    Layout.fillWidth: true
+                                }
                             }
-                        }
-                        Item {
-                            Layout.preferredWidth: 10
-                        }
-                        TodoItemActionButton {
-                            Layout.fillWidth: false
-                            implicitHeight: 48
-                            onClicked: {
-                                root.controller.deleteTask(todoItem.modelData.id)
-                            }
-                            contentItem: MaterialSymbol {
-                                anchors.centerIn: parent
-                                horizontalAlignment: Text.AlignHCenter
-                                text: "delete_forever"
-                                iconSize: 24
-                                color: Appearance.colors.colOnLayer1
-                            }
-                        }
-                        Item {
-                            Layout.fillWidth: true
                         }
                     }
                 }
             }
+        }
+
+        footer: Item {
+            width: listView.width
+            height: root.listBottomPadding
         }
     }
 

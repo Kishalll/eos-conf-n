@@ -12,6 +12,22 @@ Item {
     signal syncFailed()
     signal tokenReady()
 
+    // UI priority: 1 highest ... 4 lowest
+    // Todoist API priority: 4 highest ... 1 lowest
+    function toApiPriority(uiPriority) {
+        var value = Number(uiPriority)
+        if (isNaN(value) || value < 1 || value > 4)
+            return null
+        return 5 - Math.round(value)
+    }
+
+    function toUiPriority(apiPriority) {
+        var value = Number(apiPriority)
+        if (isNaN(value) || value < 1 || value > 4)
+            return null
+        return 5 - Math.round(value)
+    }
+
     function formatTask(item) {
         var dueObj = item && item.due ? item.due : null
         var dueText = ""
@@ -24,7 +40,7 @@ Item {
             id: item.id,
             content: item.content,
             done: item.checked || false,
-            priority: item.priority || 1,
+            priority: toUiPriority(item.priority),
             labels: item.labels || [],
             due: dueObj,
             dueString: dueText
@@ -91,8 +107,11 @@ Item {
         if (payload.dueString && payload.dueString.trim().length > 0)
             body.due_string = payload.dueString.trim()
 
-        if (payload.priority)
-            body.priority = payload.priority
+        if (payload.priority !== null && payload.priority !== undefined) {
+            var apiPriority = toApiPriority(payload.priority)
+            if (apiPriority !== null)
+                body.priority = apiPriority
+        }
 
         if (payload.labels)
             body.labels = payload.labels
@@ -133,8 +152,11 @@ Item {
         if (payload.hasOwnProperty("content"))
             body.content = payload.content
 
-        if (payload.hasOwnProperty("priority"))
-            body.priority = payload.priority
+        if (payload.hasOwnProperty("priority")) {
+            var updatedApiPriority = toApiPriority(payload.priority)
+            if (updatedApiPriority !== null)
+                body.priority = updatedApiPriority
+        }
 
         if (payload.hasOwnProperty("labels"))
             body.labels = payload.labels
