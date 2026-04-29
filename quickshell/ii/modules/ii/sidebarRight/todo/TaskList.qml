@@ -18,6 +18,108 @@ Item {
     property int todoListItemPadding: 8
     property int listBottomPadding: 80
 
+    function dueDisplayText(task) {
+        if (!task || !task.due)
+            return ""
+
+        var due = task.due
+        var phraseDate = parseRelativeDueDate(due.string || "")
+        if (phraseDate)
+            return Qt.formatDateTime(phraseDate, "MMM d, ddd")
+
+        if (!due.date)
+            return ""
+
+        if (/^\d{4}-\d{2}-\d{2}$/.test(due.date)) {
+            var dateParts = due.date.split("-")
+            var fullDayDate = new Date(Number(dateParts[0]), Number(dateParts[1]) - 1, Number(dateParts[2]), 12, 0, 0)
+            return Qt.formatDateTime(fullDayDate, "MMM d, ddd")
+        }
+
+        var parsed = new Date(due.date)
+        if (isNaN(parsed.getTime()))
+            return ""
+
+        return Qt.formatDateTime(parsed, "MMM d, ddd  hh:mm AP")
+    }
+
+    function parseRelativeDueDate(text) {
+        if (!text)
+            return null
+
+        var normalized = text.trim().toLowerCase().replace(/\s+/g, " ")
+        if (normalized.length === 0)
+            return null
+
+        var words = normalized.split(" ")
+        var typoMap = {
+            "nxt": "next",
+            "wek": "week",
+            "wk": "week",
+            "tom": "tomorrow",
+            "tmrw": "tomorrow",
+            "tmr": "tomorrow",
+            "tomorow": "tomorrow",
+            "tommorow": "tomorrow"
+        }
+        for (var i = 0; i < words.length; i++) {
+            if (typoMap[words[i]])
+                words[i] = typoMap[words[i]]
+        }
+        normalized = words.join(" ")
+
+        var today = new Date()
+
+        if (normalized === "tomorrow")
+            return new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1, 12, 0, 0)
+
+        if (normalized === "day after tomorrow")
+            return new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2, 12, 0, 0)
+
+        if (normalized === "next week") {
+            var dayOfWeek = today.getDay()
+            var daysUntilNextMonday = ((8 - dayOfWeek) % 7)
+            if (daysUntilNextMonday === 0)
+                daysUntilNextMonday = 7
+            return new Date(today.getFullYear(), today.getMonth(), today.getDate() + daysUntilNextMonday, 12, 0, 0)
+        }
+
+        if (normalized === "next month")
+            return new Date(today.getFullYear(), today.getMonth() + 1, 1, 12, 0, 0)
+
+        if (normalized === "in a week" || normalized === "after a week")
+            return new Date(today.getFullYear(), today.getMonth(), today.getDate() + 7, 12, 0, 0)
+
+        if (normalized === "in a month" || normalized === "after a month") {
+            var inAMonth = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 0)
+            inAMonth.setMonth(inAMonth.getMonth() + 1)
+            return inAMonth
+        }
+
+        var multiSpanMatch = normalized.match(/^(?:in|after)\s+(\d+)\s+(day|days|week|weeks|month|months)$/)
+        if (multiSpanMatch) {
+            var amount = Number(multiSpanMatch[1])
+            var unit = multiSpanMatch[2]
+            if (!isNaN(amount) && amount > 0) {
+                var shifted = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 0)
+                if (unit === "day" || unit === "days") {
+                    shifted.setDate(shifted.getDate() + amount)
+                    return shifted
+                }
+                if (unit === "week" || unit === "weeks") {
+                    shifted.setDate(shifted.getDate() + amount * 7)
+                    return shifted
+                }
+                if (unit === "month" || unit === "months") {
+                    shifted.setMonth(shifted.getMonth() + amount)
+                    return shifted
+                }
+            }
+        }
+
+        return null
+    }
+
     StyledListView {
         id: listView
         anchors.fill: parent
@@ -68,6 +170,16 @@ Item {
                         Layout.topMargin: todoListItemPadding
                         text: todoItem.modelData.content
                         wrapMode: Text.Wrap
+                        font.pixelSize: Appearance.font.pixelSize.normal
+                    }
+                    StyledText {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 10
+                        Layout.rightMargin: 10
+                        visible: text.length > 0
+                        text: root.dueDisplayText(todoItem.modelData)
+                        color: Appearance.m3colors.m3outline
+                        font.pixelSize: Appearance.font.pixelSize.small
                     }
                     RowLayout {
                         Layout.leftMargin: 10

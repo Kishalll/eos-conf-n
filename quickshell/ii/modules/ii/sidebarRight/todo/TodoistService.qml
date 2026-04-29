@@ -12,6 +12,25 @@ Item {
     signal syncFailed()
     signal tokenReady()
 
+    function formatTask(item) {
+        var dueObj = item && item.due ? item.due : null
+        var dueText = ""
+        if (dueObj && dueObj.string)
+            dueText = dueObj.string
+        else if (dueObj && dueObj.date)
+            dueText = dueObj.date
+
+        return {
+            id: item.id,
+            content: item.content,
+            done: item.checked || false,
+            priority: item.priority || 1,
+            labels: item.labels || [],
+            due: dueObj,
+            dueString: dueText
+        }
+    }
+
     FileView {
         id: tokenFile
         path: Qt.resolvedUrl("todoist_token")
@@ -49,21 +68,7 @@ Item {
                 var items = response.results || response
                 var formatted = []
                 for (var i = 0; i < items.length; i++) {
-                    var dueObj = items[i].due || null
-                    var dueText = ""
-                    if (dueObj && dueObj.string)
-                        dueText = dueObj.string
-                    else if (dueObj && dueObj.date)
-                        dueText = dueObj.date
-                    formatted.push({
-                        id: items[i].id,
-                        content: items[i].content,
-                        done: items[i].checked || false,
-                        priority: items[i].priority || 1,
-                        labels: items[i].labels || [],
-                        due: dueObj,
-                        dueString: dueText
-                    })
+                    formatted.push(formatTask(items[i]))
                 }
                 if (callback) callback(formatted)
             } catch (e) {
@@ -106,7 +111,14 @@ Item {
                 return
             }
 
-            if (callback) callback()
+            var createdTask = null
+            try {
+                createdTask = formatTask(JSON.parse(xhr.responseText))
+            } catch (e) {
+                createdTask = null
+            }
+
+            if (callback) callback(createdTask)
         }
 
         xhr.send(JSON.stringify(body))
@@ -149,7 +161,14 @@ Item {
                 return
             }
 
-            if (callback) callback()
+            var updatedTask = null
+            try {
+                updatedTask = formatTask(JSON.parse(xhr.responseText))
+            } catch (e) {
+                updatedTask = null
+            }
+
+            if (callback) callback(updatedTask)
         }
 
         xhr.send(JSON.stringify(body))

@@ -4,9 +4,136 @@ Item {
     id: controller
 
     property var tasks: []
-    property var unfinishedTasks: tasks.filter(function(t) { return !t.done })
+    property var unfinishedTasks: sortTasksByDue(tasks.filter(function(t) { return !t.done }))
     property var finishedTasks: tasks.filter(function(t) { return t.done })
     property bool requestInProgress: false
+
+    function dueSortTimestamp(task) {
+        if (!task || !task.due)
+            return Number.MAX_SAFE_INTEGER
+
+        var phraseDate = parseRelativeDueDate(task.due.string || "")
+        if (phraseDate)
+            return phraseDate.getTime()
+
+        if (!task.due.date)
+            return Number.MAX_SAFE_INTEGER
+
+        var dueDate = task.due.date
+
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) {
+            var parts = dueDate.split("-")
+            var year = Number(parts[0])
+            var month = Number(parts[1]) - 1
+            var day = Number(parts[2])
+            return new Date(year, month, day, 23, 59, 59, 999).getTime()
+        }
+
+        var parsed = Date.parse(dueDate)
+        if (!isNaN(parsed))
+            return parsed
+
+        return Number.MAX_SAFE_INTEGER
+    }
+
+    function parseRelativeDueDate(text) {
+        if (!text)
+            return null
+
+        var normalized = text.trim().toLowerCase().replace(/\s+/g, " ")
+        if (normalized.length === 0)
+            return null
+
+        var words = normalized.split(" ")
+        var typoMap = {
+            "nxt": "next",
+            "wek": "week",
+            "wk": "week",
+            "tom": "tomorrow",
+            "tmrw": "tomorrow",
+            "tmr": "tomorrow",
+            "tomorow": "tomorrow",
+            "tommorow": "tomorrow"
+        }
+        for (var i = 0; i < words.length; i++) {
+            if (typoMap[words[i]])
+                words[i] = typoMap[words[i]]
+        }
+        normalized = words.join(" ")
+
+        var today = new Date()
+
+        if (normalized === "tomorrow")
+            return new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1, 23, 59, 59, 999)
+
+        if (normalized === "day after tomorrow")
+            return new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2, 23, 59, 59, 999)
+
+        if (normalized === "next week") {
+            var dayOfWeek = today.getDay()
+            var daysUntilNextMonday = ((8 - dayOfWeek) % 7)
+            if (daysUntilNextMonday === 0)
+                daysUntilNextMonday = 7
+            return new Date(today.getFullYear(), today.getMonth(), today.getDate() + daysUntilNextMonday, 23, 59, 59, 999)
+        }
+
+        if (normalized === "next month")
+            return new Date(today.getFullYear(), today.getMonth() + 1, 1, 23, 59, 59, 999)
+
+        if (normalized === "in a week" || normalized === "after a week")
+            return new Date(today.getFullYear(), today.getMonth(), today.getDate() + 7, 23, 59, 59, 999)
+
+        if (normalized === "in a month" || normalized === "after a month") {
+            var inAMonth = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
+            inAMonth.setMonth(inAMonth.getMonth() + 1)
+            return inAMonth
+        }
+
+        var multiSpanMatch = normalized.match(/^(?:in|after)\s+(\d+)\s+(day|days|week|weeks|month|months)$/)
+        if (multiSpanMatch) {
+            var amount = Number(multiSpanMatch[1])
+            var unit = multiSpanMatch[2]
+            if (!isNaN(amount) && amount > 0) {
+                var shifted = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
+                if (unit === "day" || unit === "days") {
+                    shifted.setDate(shifted.getDate() + amount)
+                    return shifted
+                }
+                if (unit === "week" || unit === "weeks") {
+                    shifted.setDate(shifted.getDate() + amount * 7)
+                    return shifted
+                }
+                if (unit === "month" || unit === "months") {
+                    shifted.setMonth(shifted.getMonth() + amount)
+                    return shifted
+                }
+            }
+        }
+
+        return null
+    }
+
+    function sortTasksByDue(taskList) {
+        return taskList
+            .map(function(task, index) {
+                return {
+                    task: task,
+                    index: index,
+                    dueTs: dueSortTimestamp(task),
+                    priority: normalizePriority(task.priority)
+                }
+            })
+            .sort(function(a, b) {
+                if (a.dueTs !== b.dueTs)
+                    return a.dueTs - b.dueTs
+
+                if (a.priority !== b.priority)
+                    return b.priority - a.priority
+
+                return a.index - b.index
+            })
+            .map(function(entry) { return entry.task })
+    }
 
     TodoistService {
         id: api
@@ -78,8 +205,9 @@ Item {
             return
 
         var optimistic = tasks.slice()
+        var pendingId = "pending-" + Date.now()
         optimistic.push({
-            id: "pending-" + Date.now(),
+            id: pendingId,
             content: content,
             done: false,
             priority: priority,
@@ -94,7 +222,14 @@ Item {
             dueString: dueString,
             priority: priority,
             labels: labels
-        }, function() {
+        }, function(createdTask) {
+            if (createdTask && createdTask.id) {
+                tasks = tasks.map(function(t) {
+                    if (t.id === pendingId)
+                        return createdTask
+                    return t
+                })
+            }
             deferredRefresh.restart()
         })
     }
@@ -134,7 +269,14 @@ Item {
             labels: normalizedLabels,
             dueString: normalizedDue,
             dueClear: shouldClearDue
-        }, function() {
+        }, function(updatedTask) {
+            if (updatedTask && updatedTask.id) {
+                tasks = tasks.map(function(t) {
+                    if (t.id === taskId)
+                        return updatedTask
+                    return t
+                })
+            }
             deferredRefresh.restart()
         })
     }
