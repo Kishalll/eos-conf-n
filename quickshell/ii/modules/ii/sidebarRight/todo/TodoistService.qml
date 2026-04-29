@@ -63,37 +63,56 @@ Item {
     // Grab all tasks from Todoist (v1 API — paginated response).
     // callback(tasks) receives an array of task objects used by the UI.
     function fetchTasks(callback) {
-        if (!token) return
-
-        var xhr = new XMLHttpRequest()
-        xhr.open("GET", apiUrl)
-        xhr.setRequestHeader("Authorization", "Bearer " + token)
-
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState !== XMLHttpRequest.DONE) return
-
-            if (xhr.status < 200 || xhr.status >= 300) {
-                console.warn("[Todoist] Fetch failed — HTTP " + xhr.status)
-                service.syncFailed()
-                return
-            }
-
-            try {
-                var response = JSON.parse(xhr.responseText)
-                // v1 wraps tasks in { "results": [...], "next_cursor": ... }
-                var items = response.results || response
-                var formatted = []
-                for (var i = 0; i < items.length; i++) {
-                    formatted.push(formatTask(items[i]))
-                }
-                if (callback) callback(formatted)
-            } catch (e) {
-                console.warn("[Todoist] Failed to parse response: " + e)
-                service.syncFailed()
-            }
+        if (!token) {
+            console.warn("[Todoist] Fetch skipped — token not ready")
+            service.syncFailed()
+            return
         }
 
-        xhr.send()
+        function fetchPage(cursor, accumulatedItems) {
+            var url = apiUrl
+            if (cursor)
+                url += "?cursor=" + encodeURIComponent(cursor)
+
+            var xhr = new XMLHttpRequest()
+            xhr.open("GET", url)
+            xhr.setRequestHeader("Authorization", "Bearer " + token)
+
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState !== XMLHttpRequest.DONE) return
+
+                if (xhr.status < 200 || xhr.status >= 300) {
+                    console.warn("[Todoist] Fetch failed — HTTP " + xhr.status)
+                    service.syncFailed()
+                    return
+                }
+
+                try {
+                    var response = JSON.parse(xhr.responseText)
+                    var pageItems = response.results || response || []
+                    var nextCursor = response.next_cursor || null
+
+                    var merged = accumulatedItems.concat(pageItems)
+                    if (nextCursor) {
+                        fetchPage(nextCursor, merged)
+                        return
+                    }
+
+                    var formatted = []
+                    for (var i = 0; i < merged.length; i++)
+                        formatted.push(formatTask(merged[i]))
+
+                    if (callback) callback(formatted)
+                } catch (e) {
+                    console.warn("[Todoist] Failed to parse response: " + e)
+                    service.syncFailed()
+                }
+            }
+
+            xhr.send()
+        }
+
+        fetchPage(null, [])
     }
 
     // Create a new task. callback() is called on success.

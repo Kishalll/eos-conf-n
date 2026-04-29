@@ -428,7 +428,34 @@ Item {
 
         footer: Item {
             width: listView.width
-            height: root.listBottomPadding
+
+            Rectangle {
+                id: refreshButton
+                anchors.bottom: parent.bottom
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 132
+                height: 34
+                radius: Appearance.rounding.small
+                color: refreshMouseArea.containsMouse ? Appearance.colors.colLayer2Hover : Appearance.colors.colLayer2
+                border.width: 1
+                border.color: Appearance.colors.colLayer0Border
+
+                StyledText {
+                    anchors.centerIn: parent
+                    text: Translation.tr("Refresh")
+                    color: Appearance.colors.colOnLayer1
+                    font.pixelSize: Appearance.font.pixelSize.small
+                }
+
+                MouseArea {
+                    id: refreshMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: root.controller.refresh(true)
+                }
+            }
+
+            height: refreshButton.height + 6
         }
     }
 

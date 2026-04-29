@@ -7,6 +7,7 @@ Item {
     property var unfinishedTasks: sortTasksByDue(tasks.filter(function(t) { return !t.done }))
     property var finishedTasks: tasks.filter(function(t) { return t.done })
     property bool requestInProgress: false
+    property bool refreshQueued: false
 
     function dueSortTimestamp(task) {
         if (!task || !task.due)
@@ -142,6 +143,10 @@ Item {
         onSyncFailed: {
             console.warn("[TodoController] Sync failed — will retry on next refresh cycle")
             controller.requestInProgress = false
+            if (controller.refreshQueued) {
+                controller.refreshQueued = false
+                controller.refresh(true)
+            }
         }
     }
 
@@ -156,13 +161,26 @@ Item {
     }
 
     // Pull the full task list from Todoist.
-    function refresh() {
-        if (requestInProgress) return
+    function refresh(force) {
+        var shouldForce = force === true
+
+        if (requestInProgress) {
+            if (shouldForce)
+                refreshQueued = true
+            return
+        }
+
+        if (!api.token || api.token.length === 0) return
         requestInProgress = true
 
         api.fetchTasks(function(fetched) {
             controller.tasks = fetched
             controller.requestInProgress = false
+
+            if (controller.refreshQueued) {
+                controller.refreshQueued = false
+                controller.refresh(true)
+            }
         })
     }
 
