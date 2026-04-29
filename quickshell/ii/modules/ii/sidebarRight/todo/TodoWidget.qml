@@ -8,6 +8,76 @@ import "."
 
 Item {
 	id: root
+
+	property bool showAddDialog: false
+	property bool isEditMode: false
+	property var editingTask: null
+	property bool needsKeyboardFocus: showAddDialog
+	property int dialogMargins: 20
+	property int fabSize: 48
+	property int fabMargins: 14
+
+	function openAddDialog() {
+		isEditMode = false
+		editingTask = null
+		todoInput.text = ""
+		dueInput.text = ""
+		labelsInput.text = ""
+		prioritySelector.currentIndex = 0
+		showAddDialog = true
+	}
+
+	function openEditDialog(task) {
+		if (!task || !task.id)
+			return
+		if (task.id.toString().indexOf("pending-") === 0)
+			return
+
+		isEditMode = true
+		editingTask = task
+		todoInput.text = task.content || ""
+		dueInput.text = task.dueString || ""
+		labelsInput.text = Array.isArray(task.labels) ? task.labels.join(", ") : ""
+		var priority = Number(task.priority)
+		if (isNaN(priority) || priority < 1 || priority > 4)
+			priority = 1
+		prioritySelector.currentIndex = priority - 1
+		showAddDialog = true
+	}
+
+	function closeDialog() {
+		showAddDialog = false
+	}
+
+	function saveTask() {
+		var content = todoInput.text.trim()
+		if (content.length === 0)
+			return
+
+		var due = dueInput.text.trim()
+		var priority = prioritySelector.currentIndex + 1
+		var labels = labelsInput.text
+
+		if (isEditMode && editingTask) {
+			todoController.editTask(editingTask.id, {
+				content: content,
+				dueString: due,
+				clearDue: due.length === 0,
+				priority: priority,
+				labels: labels
+			})
+		} else {
+			todoController.addTask({
+				content: content,
+				dueString: due,
+				priority: priority,
+				labels: labels
+			})
+		}
+
+		closeDialog()
+	}
+
 	TodoController {
 		id: todoController
 	}
@@ -19,16 +89,11 @@ Item {
 		running: true
 		onTriggered: todoController.refresh()
 	}
-    property bool showAddDialog: false
-    property bool needsKeyboardFocus: showAddDialog
-    property int dialogMargins: 20
-    property int fabSize: 48
-    property int fabMargins: 14
 
     Keys.onPressed: (event) => {
         // Open add dialog on "N" (any modifiers)
         if (event.key === Qt.Key_N) {
-            root.showAddDialog = true
+            root.openAddDialog()
             event.accepted = true;
         }
         // Close dialog on Esc if open
@@ -53,6 +118,7 @@ Item {
             emptyPlaceholderText: Translation.tr("Nothing here!")
             controller: todoController
             taskList: todoController.unfinishedTasks
+            onEditRequested: task => root.openEditDialog(task)
         }
     }
 
@@ -69,7 +135,7 @@ Item {
         anchors.rightMargin: root.fabMargins
         anchors.bottomMargin: root.fabMargins
 
-        onClicked: root.showAddDialog = true
+        onClicked: root.openAddDialog()
         iconText: "add"
     }
 
@@ -105,6 +171,11 @@ Item {
             } else {
                 focusGrabTimer.stop()
                 todoInput.text = ""
+                dueInput.text = ""
+                labelsInput.text = ""
+                prioritySelector.currentIndex = 0
+                root.isEditMode = false
+                root.editingTask = null
                 fabButton.focus = true
             }
         }
@@ -132,14 +203,6 @@ Item {
             color: Appearance.m3colors.m3surfaceContainerHigh
             radius: Appearance.rounding.normal
 
-            function addTask() {
-                if (todoInput.text.length > 0) {
-                    todoController.addTask(todoInput.text)
-                    todoInput.text = ""
-                    root.showAddDialog = false
-                }
-            }
-
             ColumnLayout {
                 id: dialogColumnLayout
                 anchors.fill: parent
@@ -152,7 +215,7 @@ Item {
                     Layout.alignment: Qt.AlignLeft
                     color: Appearance.m3colors.m3onSurface
                     font.pixelSize: Appearance.font.pixelSize.larger
-                    text: Translation.tr("Add task")
+                    text: root.isEditMode ? Translation.tr("Edit task") : Translation.tr("Add task")
                 }
 
                 TextField {
@@ -168,7 +231,7 @@ Item {
                     placeholderText: Translation.tr("Task description")
                     placeholderTextColor: Appearance.m3colors.m3outline
                     focus: root.showAddDialog
-                    onAccepted: dialog.addTask()
+                    onAccepted: root.saveTask()
 
                     background: Rectangle {
                         anchors.fill: parent
@@ -185,6 +248,73 @@ Item {
                     }
                 }
 
+                TextField {
+                    id: dueInput
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 16
+                    Layout.rightMargin: 16
+                    padding: 10
+                    color: activeFocus ? Appearance.m3colors.m3onSurface : Appearance.m3colors.m3onSurfaceVariant
+                    renderType: Text.NativeRendering
+                    selectedTextColor: Appearance.m3colors.m3onSecondaryContainer
+                    selectionColor: Appearance.colors.colSecondaryContainer
+                    placeholderText: Translation.tr("Due (e.g. tomorrow 9pm)")
+                    placeholderTextColor: Appearance.m3colors.m3outline
+                    onAccepted: root.saveTask()
+
+                    background: Rectangle {
+                        anchors.fill: parent
+                        radius: Appearance.rounding.verysmall
+                        border.width: 2
+                        border.color: dueInput.activeFocus ? Appearance.colors.colPrimary : Appearance.m3colors.m3outline
+                        color: "transparent"
+                    }
+
+                    cursorDelegate: Rectangle {
+                        width: 1
+                        color: dueInput.activeFocus ? Appearance.colors.colPrimary : "transparent"
+                        radius: 1
+                    }
+                }
+
+                StyledComboBox {
+                    id: prioritySelector
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 16
+                    Layout.rightMargin: 16
+                    model: ["P1", "P2", "P3", "P4"]
+                    currentIndex: 0
+                }
+
+                TextField {
+                    id: labelsInput
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 16
+                    Layout.rightMargin: 16
+                    padding: 10
+                    color: activeFocus ? Appearance.m3colors.m3onSurface : Appearance.m3colors.m3onSurfaceVariant
+                    renderType: Text.NativeRendering
+                    selectedTextColor: Appearance.m3colors.m3onSecondaryContainer
+                    selectionColor: Appearance.colors.colSecondaryContainer
+                    placeholderText: Translation.tr("Labels (comma-separated)")
+                    placeholderTextColor: Appearance.m3colors.m3outline
+                    onAccepted: root.saveTask()
+
+                    background: Rectangle {
+                        anchors.fill: parent
+                        radius: Appearance.rounding.verysmall
+                        border.width: 2
+                        border.color: labelsInput.activeFocus ? Appearance.colors.colPrimary : Appearance.m3colors.m3outline
+                        color: "transparent"
+                    }
+
+                    cursorDelegate: Rectangle {
+                        width: 1
+                        color: labelsInput.activeFocus ? Appearance.colors.colPrimary : "transparent"
+                        radius: 1
+                    }
+                }
+
                 RowLayout {
                     Layout.bottomMargin: 16
                     Layout.leftMargin: 16
@@ -194,12 +324,12 @@ Item {
 
                     DialogButton {
                         buttonText: Translation.tr("Cancel")
-                        onClicked: root.showAddDialog = false
+                        onClicked: root.closeDialog()
                     }
                     DialogButton {
-                        buttonText: Translation.tr("Add")
-                        enabled: todoInput.text.length > 0
-                        onClicked: dialog.addTask()
+                        buttonText: root.isEditMode ? Translation.tr("Save") : Translation.tr("Add")
+                        enabled: todoInput.text.trim().length > 0
+                        onClicked: root.saveTask()
                     }
                 }
             }

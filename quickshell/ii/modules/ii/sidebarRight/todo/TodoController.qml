@@ -38,17 +38,103 @@ Item {
         })
     }
 
+    function parseLabels(labelsInput) {
+        if (Array.isArray(labelsInput))
+            return labelsInput
+
+        if (!labelsInput)
+            return []
+
+        return labelsInput
+            .split(",")
+            .map(function(label) { return label.trim() })
+            .filter(function(label) { return label.length > 0 })
+    }
+
+    function normalizePriority(priorityInput) {
+        var value = Number(priorityInput)
+        if (isNaN(value) || value < 1 || value > 4)
+            return 1
+        return Math.round(value)
+    }
+
     // Optimistic add — show it in the UI right away, then tell the API.
-    function addTask(content) {
+    function addTask(taskInput) {
+        var content = ""
+        var dueString = ""
+        var priority = 1
+        var labels = []
+
+        if (typeof taskInput === "string") {
+            content = taskInput.trim()
+        } else {
+            content = (taskInput.content || "").trim()
+            dueString = (taskInput.dueString || "").trim()
+            priority = normalizePriority(taskInput.priority)
+            labels = parseLabels(taskInput.labels)
+        }
+
+        if (content.length === 0)
+            return
+
         var optimistic = tasks.slice()
         optimistic.push({
             id: "pending-" + Date.now(),
             content: content,
-            done: false
+            done: false,
+            priority: priority,
+            labels: labels,
+            due: dueString.length > 0 ? { string: dueString } : null,
+            dueString: dueString
         })
         tasks = optimistic
 
-        api.createTask(content, function() {
+        api.createTask({
+            content: content,
+            dueString: dueString,
+            priority: priority,
+            labels: labels
+        }, function() {
+            deferredRefresh.restart()
+        })
+    }
+
+    function editTask(taskId, updates) {
+        if (!taskId || taskId.toString().indexOf("pending-") === 0)
+            return
+
+        var newContent = (updates.content || "").trim()
+        if (newContent.length === 0)
+            return
+
+        var normalizedPriority = normalizePriority(updates.priority)
+        var normalizedLabels = parseLabels(updates.labels)
+        var dueRaw = updates.dueString || ""
+        var normalizedDue = dueRaw.trim()
+        var shouldClearDue = updates.clearDue === true
+
+        tasks = tasks.map(function(t) {
+            if (t.id !== taskId)
+                return t
+
+            return {
+                id: t.id,
+                content: newContent,
+                done: t.done,
+                priority: normalizedPriority,
+                labels: normalizedLabels,
+                due: shouldClearDue ? null : (normalizedDue.length > 0 ? { string: normalizedDue } : t.due),
+                dueString: shouldClearDue ? "" : (normalizedDue.length > 0 ? normalizedDue : (t.dueString || ""))
+            }
+        })
+
+        api.updateTask(taskId, {
+            content: newContent,
+            priority: normalizedPriority,
+            labels: normalizedLabels,
+            dueString: normalizedDue,
+            dueClear: shouldClearDue
+        }, function() {
             deferredRefresh.restart()
         })
     }
@@ -57,7 +143,7 @@ Item {
     function completeTask(taskId) {
         var updated = tasks.map(function(t) {
             if (t.id === taskId) {
-                return { id: t.id, content: t.content, done: true }
+                return Object.assign({}, t, { done: true })
             }
             return t
         })

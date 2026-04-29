@@ -26,7 +26,7 @@ Item {
     }
 
     // Grab all tasks from Todoist (v1 API — paginated response).
-    // callback(tasks) receives an array of { id, content, done } objects.
+    // callback(tasks) receives an array of task objects used by the UI.
     function fetchTasks(callback) {
         if (!token) return
 
@@ -49,10 +49,20 @@ Item {
                 var items = response.results || response
                 var formatted = []
                 for (var i = 0; i < items.length; i++) {
+                    var dueObj = items[i].due || null
+                    var dueText = ""
+                    if (dueObj && dueObj.string)
+                        dueText = dueObj.string
+                    else if (dueObj && dueObj.date)
+                        dueText = dueObj.date
                     formatted.push({
                         id: items[i].id,
                         content: items[i].content,
-                        done: items[i].checked || false
+                        done: items[i].checked || false,
+                        priority: items[i].priority || 1,
+                        labels: items[i].labels || [],
+                        due: dueObj,
+                        dueString: dueText
                     })
                 }
                 if (callback) callback(formatted)
@@ -66,8 +76,21 @@ Item {
     }
 
     // Create a new task. callback() is called on success.
-    function createTask(content, callback) {
+    function createTask(payload, callback) {
         if (!token) return
+
+        var body = {
+            content: payload.content
+        }
+
+        if (payload.dueString && payload.dueString.trim().length > 0)
+            body.due_string = payload.dueString.trim()
+
+        if (payload.priority)
+            body.priority = payload.priority
+
+        if (payload.labels)
+            body.labels = payload.labels
 
         var xhr = new XMLHttpRequest()
         xhr.open("POST", apiUrl)
@@ -86,7 +109,50 @@ Item {
             if (callback) callback()
         }
 
-        xhr.send(JSON.stringify({ "content": content }))
+        xhr.send(JSON.stringify(body))
+    }
+
+    // Update an existing task with partial data.
+    function updateTask(taskId, payload, callback) {
+        if (!token) return
+
+        var body = {}
+
+        if (payload.hasOwnProperty("content"))
+            body.content = payload.content
+
+        if (payload.hasOwnProperty("priority"))
+            body.priority = payload.priority
+
+        if (payload.hasOwnProperty("labels"))
+            body.labels = payload.labels
+
+        if (payload.hasOwnProperty("dueClear") && payload.dueClear === true) {
+            body.due = null
+        } else if (payload.hasOwnProperty("dueString")) {
+            var newDue = payload.dueString ? payload.dueString.trim() : ""
+            if (newDue.length > 0)
+                body.due_string = newDue
+        }
+
+        var xhr = new XMLHttpRequest()
+        xhr.open("POST", apiUrl + "/" + taskId)
+        xhr.setRequestHeader("Authorization", "Bearer " + token)
+        xhr.setRequestHeader("Content-Type", "application/json")
+
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState !== XMLHttpRequest.DONE) return
+
+            if (xhr.status < 200 || xhr.status >= 300) {
+                console.warn("[Todoist] Update task failed — HTTP " + xhr.status)
+                service.syncFailed()
+                return
+            }
+
+            if (callback) callback()
+        }
+
+        xhr.send(JSON.stringify(body))
     }
 
     // Mark a task as complete via the close endpoint.

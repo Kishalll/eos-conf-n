@@ -80,7 +80,7 @@
             "workspaceZoom": 1.07
         },
         "thumbnailPath": "",
-        "wallpaperPath": "/home/gigabyte/Pictures/Wallpapers/wa.jpg",
+        "wallpaperPath": "/home/gigabyte/Pictures/Wallpapers/pastel-window.png",
         "widgets": {
             "clock": {
                 "cookie": {
@@ -98,7 +98,7 @@
                     "useSineCookie": true
                 },
                 "digital": {
-                    "adaptiveAlignment": false,
+                    "adaptiveAlignment": true,
                     "animateChange": true,
                     "font": {
                         "family": "Inter",
@@ -111,7 +111,7 @@
                     "vertical": false
                 },
                 "enable": true,
-                "placementStrategy": "mostBusy",
+                "placementStrategy": "free",
                 "quote": {
                     "enable": false,
                     "text": "hii"
@@ -119,8 +119,8 @@
                 "showOnlyWhenLocked": false,
                 "style": "digital",
                 "styleLocked": "digital",
-                "x": 361.5,
-                "y": 281.5
+                "x": 217.22578125000018,
+                "y": 285.046875
             },
             "weather": {
                 "enable": false,
@@ -229,7 +229,6 @@
         ],
         "monochromeIcons": false,
         "pinnedApps": [
-            "kitty"
         ],
         "pinnedOnStartup": false
     },

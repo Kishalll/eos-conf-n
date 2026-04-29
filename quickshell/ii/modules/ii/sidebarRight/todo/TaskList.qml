@@ -11,6 +11,7 @@ Item {
     id: root
     required property var taskList
     required property var controller
+    signal editRequested(var task)
     property string emptyPlaceholderIcon
     property string emptyPlaceholderText
     property int todoListItemSpacing: 5
@@ -74,6 +75,23 @@ Item {
                         Layout.bottomMargin: todoListItemPadding
                         Item {
                             Layout.fillWidth: true
+                        }
+                        TodoItemActionButton {
+                            Layout.fillWidth: false
+                            implicitHeight: 48
+                            onClicked: {
+                                root.editRequested(todoItem.modelData)
+                            }
+                            contentItem: MaterialSymbol {
+                                anchors.centerIn: parent
+                                horizontalAlignment: Text.AlignHCenter
+                                text: "edit"
+                                iconSize: 24
+                                color: Appearance.colors.colOnLayer1
+                            }
+                        }
+                        Item {
+                            Layout.preferredWidth: 10
                         }
                         TodoItemActionButton {
                             Layout.fillWidth: false
