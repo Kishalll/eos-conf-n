@@ -65,8 +65,6 @@ Item {
 	function openEditDialog(task) {
 		if (!task || !task.id)
 			return
-		if (task.id.toString().indexOf("pending-") === 0)
-			return
 
 		isEditMode = true
 		editingTask = task

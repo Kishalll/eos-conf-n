@@ -62,51 +62,155 @@ Item {
         }
         normalized = words.join(" ")
 
+        function parseTimeSuffix(rawSuffix) {
+            if (!rawSuffix)
+                return null
+
+            var suffix = rawSuffix.trim()
+            if (suffix.length === 0)
+                return null
+
+            if (suffix.indexOf("at ") === 0)
+                suffix = suffix.slice(3).trim()
+
+            var meridiemMatch = suffix.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/)
+            if (meridiemMatch) {
+                var hour12 = Number(meridiemMatch[1])
+                var minute12 = meridiemMatch[2] ? Number(meridiemMatch[2]) : 0
+                var period = meridiemMatch[3]
+
+                if (isNaN(hour12) || hour12 < 1 || hour12 > 12 || isNaN(minute12) || minute12 < 0 || minute12 > 59)
+                    return null
+
+                var hour24 = hour12 % 12
+                if (period === "pm")
+                    hour24 += 12
+
+                return {
+                    hours: hour24,
+                    minutes: minute12
+                }
+            }
+
+            var twentyFourHourMatch = suffix.match(/^(\d{1,2}):(\d{2})$/)
+            if (twentyFourHourMatch) {
+                var hour24Only = Number(twentyFourHourMatch[1])
+                var minute24Only = Number(twentyFourHourMatch[2])
+
+                if (isNaN(hour24Only) || hour24Only < 0 || hour24Only > 23 || isNaN(minute24Only) || minute24Only < 0 || minute24Only > 59)
+                    return null
+
+                return {
+                    hours: hour24Only,
+                    minutes: minute24Only
+                }
+            }
+
+            return null
+        }
+
+        function dateWithTime(baseDate, timeInfo, defaultHours) {
+            var hours = timeInfo ? timeInfo.hours : defaultHours
+            var minutes = timeInfo ? timeInfo.minutes : 59
+            var seconds = timeInfo ? 0 : 59
+            var millis = timeInfo ? 0 : 999
+            return new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate(), hours, minutes, seconds, millis)
+        }
+
+        function matchPhraseWithOptionalTime(value, phrase) {
+            if (value === phrase)
+                return { matched: true, time: null }
+
+            var prefix = phrase + " "
+            if (value.indexOf(prefix) !== 0)
+                return { matched: false, time: null }
+
+            var timeInfo = parseTimeSuffix(value.slice(prefix.length))
+            if (!timeInfo)
+                return { matched: false, time: null }
+
+            return {
+                matched: true,
+                time: timeInfo
+            }
+        }
+
         var today = new Date()
 
-        if (normalized === "tomorrow")
-            return new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1, 23, 59, 59, 999)
+        var tomorrowMatch = matchPhraseWithOptionalTime(normalized, "tomorrow")
+        if (tomorrowMatch.matched) {
+            var tomorrowDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+            return dateWithTime(tomorrowDate, tomorrowMatch.time, 23)
+        }
 
-        if (normalized === "day after tomorrow")
-            return new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2, 23, 59, 59, 999)
+        var dayAfterTomorrowMatch = matchPhraseWithOptionalTime(normalized, "day after tomorrow")
+        if (dayAfterTomorrowMatch.matched) {
+            var dayAfterTomorrowDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2)
+            return dateWithTime(dayAfterTomorrowDate, dayAfterTomorrowMatch.time, 23)
+        }
 
-        if (normalized === "next week") {
+        var nextWeekMatch = matchPhraseWithOptionalTime(normalized, "next week")
+        if (nextWeekMatch.matched) {
             var dayOfWeek = today.getDay()
             var daysUntilNextMonday = ((8 - dayOfWeek) % 7)
             if (daysUntilNextMonday === 0)
                 daysUntilNextMonday = 7
-            return new Date(today.getFullYear(), today.getMonth(), today.getDate() + daysUntilNextMonday, 23, 59, 59, 999)
+            var nextWeekDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + daysUntilNextMonday)
+            return dateWithTime(nextWeekDate, nextWeekMatch.time, 23)
         }
 
-        if (normalized === "next month")
-            return new Date(today.getFullYear(), today.getMonth() + 1, 1, 23, 59, 59, 999)
-
-        if (normalized === "in a week" || normalized === "after a week")
-            return new Date(today.getFullYear(), today.getMonth(), today.getDate() + 7, 23, 59, 59, 999)
-
-        if (normalized === "in a month" || normalized === "after a month") {
-            var inAMonth = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
-            inAMonth.setMonth(inAMonth.getMonth() + 1)
-            return inAMonth
+        var nextMonthMatch = matchPhraseWithOptionalTime(normalized, "next month")
+        if (nextMonthMatch.matched) {
+            var nextMonthDate = new Date(today.getFullYear(), today.getMonth() + 1, 1)
+            return dateWithTime(nextMonthDate, nextMonthMatch.time, 23)
         }
 
-        var multiSpanMatch = normalized.match(/^(?:in|after)\s+(\d+)\s+(day|days|week|weeks|month|months)$/)
+        var inAWeekMatch = matchPhraseWithOptionalTime(normalized, "in a week")
+        if (inAWeekMatch.matched) {
+            var inAWeekDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 7)
+            return dateWithTime(inAWeekDate, inAWeekMatch.time, 23)
+        }
+
+        var afterAWeekMatch = matchPhraseWithOptionalTime(normalized, "after a week")
+        if (afterAWeekMatch.matched) {
+            var afterAWeekDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 7)
+            return dateWithTime(afterAWeekDate, afterAWeekMatch.time, 23)
+        }
+
+        var inAMonthMatch = matchPhraseWithOptionalTime(normalized, "in a month")
+        if (inAMonthMatch.matched) {
+            var inAMonthDate = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+            inAMonthDate.setMonth(inAMonthDate.getMonth() + 1)
+            return dateWithTime(inAMonthDate, inAMonthMatch.time, 23)
+        }
+
+        var afterAMonthMatch = matchPhraseWithOptionalTime(normalized, "after a month")
+        if (afterAMonthMatch.matched) {
+            var afterAMonthDate = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+            afterAMonthDate.setMonth(afterAMonthDate.getMonth() + 1)
+            return dateWithTime(afterAMonthDate, afterAMonthMatch.time, 23)
+        }
+
+        var multiSpanMatch = normalized.match(/^(?:in|after)\s+(\d+)\s+(day|days|week|weeks|month|months)(?:\s+(.+))?$/)
         if (multiSpanMatch) {
             var amount = Number(multiSpanMatch[1])
             var unit = multiSpanMatch[2]
+            var optionalTime = multiSpanMatch[3] ? parseTimeSuffix(multiSpanMatch[3]) : null
+            if (multiSpanMatch[3] && !optionalTime)
+                return null
             if (!isNaN(amount) && amount > 0) {
-                var shifted = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
+                var shifted = new Date(today.getFullYear(), today.getMonth(), today.getDate())
                 if (unit === "day" || unit === "days") {
                     shifted.setDate(shifted.getDate() + amount)
-                    return shifted
+                    return dateWithTime(shifted, optionalTime, 23)
                 }
                 if (unit === "week" || unit === "weeks") {
                     shifted.setDate(shifted.getDate() + amount * 7)
-                    return shifted
+                    return dateWithTime(shifted, optionalTime, 23)
                 }
                 if (unit === "month" || unit === "months") {
                     shifted.setMonth(shifted.getMonth() + amount)
-                    return shifted
+                    return dateWithTime(shifted, optionalTime, 23)
                 }
             }
         }
@@ -272,8 +376,10 @@ Item {
     }
 
     function editTask(taskId, updates) {
-        if (!taskId || taskId.toString().indexOf("pending-") === 0)
+        if (!taskId)
             return
+
+        var isPendingTask = taskId.toString().indexOf("pending-") === 0
 
         var newContent = (updates.content || "").trim()
         if (newContent.length === 0)
@@ -310,6 +416,9 @@ Item {
 
         if (hasPriorityUpdate && normalizedPriority !== null)
             updatePayload.priority = normalizedPriority
+
+        if (isPendingTask)
+            return
 
         api.updateTask(taskId, updatePayload, function(updatedTask) {
             if (updatedTask && updatedTask.id) {
