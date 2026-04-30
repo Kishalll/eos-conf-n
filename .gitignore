@@ -55,6 +55,8 @@ Antigravity/
 
 # NESTED GIT REPOS 
 nvim/pack/github/start/copilot.vim
+illogical-impulse/ai/.env
+illogical-impulse/.env
 
 # STANDARD JUNK
 *.log

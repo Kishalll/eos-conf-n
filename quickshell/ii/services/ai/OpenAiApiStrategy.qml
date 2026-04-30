@@ -21,9 +21,14 @@ ApiStrategy {
                 }),
             ],
             "stream": true,
-            "tools": tools,
             "temperature": temperature,
         };
+        if (tools && tools.length > 0) {
+            baseData["tools"] = tools;
+            baseData["tool_choice"] = "auto";
+        } else {
+            baseData["tool_choice"] = "none";
+        }
         return model.extraParams ? Object.assign({}, baseData, model.extraParams) : baseData;
     }
 

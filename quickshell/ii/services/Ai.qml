@@ -42,11 +42,12 @@ Singleton {
     property var messageByID: ({})
     readonly property var apiKeys: KeyringStorage.keyringData?.apiKeys ?? {}
     readonly property var apiKeysLoaded: KeyringStorage.loaded
+    readonly property string envKeyFilePath: `${Directories.shellConfig}/.env`
+    property var envApiKeys: ({})
     readonly property bool currentModelHasApiKey: {
         const model = models[currentModelId];
         if (!model || !model.requires_key) return true;
-        if (!apiKeysLoaded) return false;
-        const key = apiKeys[model.key_id];
+        const key = getApiKeyForModel(model);
         return (key?.length > 0);
     }
     property var postResponseHook
@@ -64,6 +65,58 @@ Singleton {
 
     function safeModelName(modelName) {
         return modelName.replace(/:/g, "_").replace(/ /g, "-").replace(/\//g, "-")
+    }
+
+    function parseDotEnv(content) {
+        let parsed = {};
+        (content ?? "").split(/\r?\n/).forEach(line => {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith("#")) return;
+            const separatorIndex = trimmed.indexOf("=");
+            if (separatorIndex <= 0) return;
+
+            const key = trimmed.slice(0, separatorIndex).trim();
+            let value = trimmed.slice(separatorIndex + 1).trim();
+            if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+                value = value.slice(1, -1);
+            }
+            if (key.length > 0) parsed[key] = value;
+        });
+        return parsed;
+    }
+
+    function envVarCandidatesForModel(model) {
+        const keyId = (model?.key_id ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "_");
+        let candidates = ["API_KEY"];
+        if (keyId.length > 0) candidates = [`${keyId}_API_KEY`, ...candidates];
+        if (model?.key_id === "nvidia") candidates = ["NVIDIA_API_KEY", ...candidates];
+        return [...new Set(candidates)];
+    }
+
+    function getEnvApiKeyForModel(model) {
+        const candidates = envVarCandidatesForModel(model);
+        for (let i = 0; i < candidates.length; i++) {
+            const key = root.envApiKeys?.[candidates[i]];
+            if (typeof key === "string" && key.trim().length > 0) {
+                return key.trim();
+            }
+        }
+        return "";
+    }
+
+    function getApiKeyForModel(model) {
+        const keyringValue = root.apiKeys ? (root.apiKeys[model?.key_id] ?? "") : "";
+        if (typeof keyringValue === "string" && keyringValue.trim().length > 0) {
+            return keyringValue.trim();
+        }
+        return getEnvApiKeyForModel(model);
+    }
+
+    function toolsForModel(model) {
+        if (model?.endpoint?.includes("integrate.api.nvidia.com")) {
+            return [];
+        }
+        return root.tools[model.api_format][root.currentTool];
     }
 
     property list<var> defaultPrompts: []
@@ -308,6 +361,8 @@ Singleton {
         }),
     }
     property var modelList: Object.keys(root.models)
+    property string preferredFirstModelId: "meta-llama-3.1-70b-instruct"
+    property list<string> configuredExtraModelIds: []
     property var currentModelId: Persistent.states?.ai?.model || modelList[0]
 
     property var apiStrategies: {
@@ -321,18 +376,71 @@ Singleton {
         target: Config
         function onReadyChanged() {
             if (!Config.ready) return;
-            (Config?.options.ai?.extraModels ?? []).forEach(model => {
-                const safeModelName = root.safeModelName(model["model"]);
-                root.addModel(safeModelName, model)
-            });
+            Qt.callLater(root.loadConfiguredExtraModels);
+        }
+    }
+
+    Connections {
+        target: Config.ready ? Config.options.ai : null
+        ignoreUnknownSignals: true
+
+        function onExtraModelsChanged() {
+            Qt.callLater(root.loadConfiguredExtraModels);
         }
     }
 
     property string requestScriptFilePath: "/tmp/quickshell/ai/request.sh"
     property string pendingFilePath: ""
 
+    FileView {
+        id: envKeyFile
+        path: Qt.resolvedUrl(CF.FileUtils.trimFileProtocol(root.envKeyFilePath))
+        watchChanges: true
+        onLoadedChanged: {
+            if (!loaded) return;
+            root.envApiKeys = root.parseDotEnv(envKeyFile.text());
+        }
+        onLoadFailed: {
+            root.envApiKeys = ({});
+        }
+    }
+
     Component.onCompleted: {
+        Qt.callLater(root.loadConfiguredExtraModels);
         setModel(currentModelId, false, false); // Do necessary setup for model
+    }
+
+    function clearConfiguredExtraModels() {
+        root.configuredExtraModelIds.forEach(modelId => {
+            if (root.models[modelId] !== undefined) {
+                delete root.models[modelId];
+            }
+        });
+        root.configuredExtraModelIds = [];
+    }
+
+    function loadConfiguredExtraModels() {
+        if (!Config.ready) return;
+
+        root.clearConfiguredExtraModels();
+
+        const extraModelsRaw = Config?.options?.ai?.extraModels;
+        let extraModels = [];
+        if (Array.isArray(extraModelsRaw)) {
+            extraModels = extraModelsRaw;
+        } else if (extraModelsRaw && typeof extraModelsRaw.length === "number") {
+            for (let i = 0; i < extraModelsRaw.length; i++) {
+                extraModels.push(extraModelsRaw[i]);
+            }
+        }
+
+        extraModels.forEach(model => {
+            if (!model || !model.model || !model.endpoint) return;
+            const safeModelName = root.safeModelName(model.model);
+            root.addModel(safeModelName, model)
+            root.configuredExtraModelIds = [...root.configuredExtraModelIds, safeModelName];
+        });
+        root.modelList = root.prioritizedModelList(Object.keys(root.models));
     }
 
     function guessModelLogo(model) {
@@ -358,6 +466,13 @@ Singleton {
 
     function addModel(modelName, data) {
         root.models[modelName] = aiModelComponent.createObject(this, data);
+        root.modelList = root.prioritizedModelList(Object.keys(root.models));
+    }
+
+    function prioritizedModelList(list) {
+        const modelId = root.preferredFirstModelId;
+        if (!list.includes(modelId)) return list;
+        return [modelId, ...list.filter(item => item !== modelId)];
     }
 
     Process {
@@ -383,7 +498,7 @@ Singleton {
                         })
                     });
 
-                    root.modelList = Object.keys(root.models);
+                    root.modelList = root.prioritizedModelList(Object.keys(root.models));
 
                 } catch (e) {
                     console.log("Could not fetch Ollama models:", e);
@@ -556,8 +671,11 @@ Singleton {
         const model = models[currentModelId];
         if (model.requires_key) {
             const key = root.apiKeys[model.key_id];
-            if (key) {
+            const envKey = root.getEnvApiKeyForModel(model);
+            if (key && key.length > 0) {
                 root.addMessage(Translation.tr("API key:\n\n```txt\n%1\n```").arg(key), Ai.interfaceRole);
+            } else if (envKey && envKey.length > 0) {
+                root.addMessage(Translation.tr("API key loaded from %1").arg(root.envKeyFilePath), Ai.interfaceRole);
             } else {
                 root.addMessage(Translation.tr("No API key set for %1").arg(model.name), Ai.interfaceRole);
             }
@@ -603,18 +721,26 @@ Singleton {
 
             // Fetch API keys if needed
             if (model?.requires_key && !KeyringStorage.loaded) KeyringStorage.fetchKeyringData();
+
+            if (model?.requires_key) {
+                const resolvedApiKey = root.getApiKeyForModel(model);
+                if (!resolvedApiKey || resolvedApiKey.length === 0) {
+                    root.addApiKeyAdvice(model);
+                    return;
+                }
+            }
             
             requester.currentStrategy = root.currentApiStrategy;
             requester.currentStrategy.reset(); // Reset strategy state
 
             /* Put API key in environment variable */
-            if (model.requires_key) requester.environment[`${root.apiKeyEnvVarName}`] = root.apiKeys ? (root.apiKeys[model.key_id] ?? "") : ""
+            if (model.requires_key) requester.environment[`${root.apiKeyEnvVarName}`] = root.getApiKeyForModel(model)
 
             /* Build endpoint, request data */
             const endpoint = root.currentApiStrategy.buildEndpoint(model);
             const messageArray = root.messageIDs.map(id => root.messageByID[id]);
             const filteredMessageArray = messageArray.filter(message => message.role !== Ai.interfaceRole);
-            const data = root.currentApiStrategy.buildRequestData(model, filteredMessageArray, root.systemPrompt, root.temperature, root.tools[model.api_format][root.currentTool], root.pendingFilePath);
+            const data = root.currentApiStrategy.buildRequestData(model, filteredMessageArray, root.systemPrompt, root.temperature, root.toolsForModel(model), root.pendingFilePath);
             // console.log("[Ai] Request data: ", JSON.stringify(data, null, 2));
 
             let requestHeaders = {
