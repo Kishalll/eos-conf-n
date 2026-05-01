@@ -34,9 +34,9 @@ if status is-interactive # Commands to run in interactive sessions can go here
     alias nm 'nvim'
     alias nv 'nvim'
     alias storage 'sudo ncdu /'
-    alias converto 'libreoffice --headless --convert-to'
+    alias topdf 'libreoffice --headless --convert-to pdf'
     alias cd1 'cd ..'
-    alias convertod 'libreoffice --headless --infilter="writer_pdf_import" --convert-to'
+    alias todoc 'libreoffice --headless --infilter="writer_pdf_import" --convert-to docx'
     function mkcd
 	mkdir -p "$argv[1]"
     	cd "$argv[1]"
