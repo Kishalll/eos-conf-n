@@ -8,6 +8,7 @@ Item {
     property var finishedTasks: tasks.filter(function(t) { return t.done })
     property bool requestInProgress: false
     property bool refreshQueued: false
+    property double requestStartedAtMs: 0
 
     function dueSortTimestamp(task) {
         if (!task || !task.due)
@@ -47,10 +48,34 @@ Item {
 
         var words = normalized.split(" ")
         var typoMap = {
+            "minday": "monday",
+            "mon": "monday",
+            "tue": "tuesday",
+            "wed": "wednesday",
+            "thur": "thursday",
+            "thurs": "thursday",
+            "fri": "friday",
+            "sat": "saturday",
+            "sun": "sunday",
+            "jan": "january",
+            "feb": "february",
+            "mar": "march",
+            "apr": "april",
+            "aprl": "april",
+            "jun": "june",
+            "jul": "july",
+            "aug": "august",
+            "sep": "september",
+            "oct": "october",
+            "nov": "november",
+            "dec": "december",
             "nxt": "next",
             "wek": "week",
+            "mnth": "month",
+            "mth": "month",
             "wk": "week",
             "tom": "tomorrow",
+            "tod": "today",
             "tmrw": "tomorrow",
             "tmr": "tomorrow",
             "tomorow": "tomorrow",
@@ -136,6 +161,39 @@ Item {
         }
 
         var today = new Date()
+
+        var todayMatch = matchPhraseWithOptionalTime(normalized, "today")
+        if (todayMatch.matched) {
+            var todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+            return dateWithTime(todayDate, todayMatch.time, 23)
+        }
+
+        var weekdayMatch = normalized.match(/^(next\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?:\s+(.+))?$/)
+        if (weekdayMatch) {
+            var weekdays = {
+                sunday: 0,
+                monday: 1,
+                tuesday: 2,
+                wednesday: 3,
+                thursday: 4,
+                friday: 5,
+                saturday: 6
+            }
+            var wantsNextWeek = !!weekdayMatch[1]
+            var targetDow = weekdays[weekdayMatch[2]]
+            var timeInfo = weekdayMatch[3] ? parseTimeSuffix(weekdayMatch[3]) : null
+            if (weekdayMatch[3] && !timeInfo)
+                return null
+
+            var dayDelta = targetDow - today.getDay()
+            if (dayDelta < 0)
+                dayDelta += 7
+            if (wantsNextWeek && dayDelta === 0)
+                dayDelta = 7
+
+            var weekdayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + dayDelta)
+            return dateWithTime(weekdayDate, timeInfo, 23)
+        }
 
         var tomorrowMatch = matchPhraseWithOptionalTime(normalized, "tomorrow")
         if (tomorrowMatch.matched) {
@@ -247,6 +305,7 @@ Item {
         onSyncFailed: {
             console.warn("[TodoController] Sync failed — will retry on next refresh cycle")
             controller.requestInProgress = false
+            controller.requestStartedAtMs = 0
             if (controller.refreshQueued) {
                 controller.refreshQueued = false
                 controller.refresh(true)
@@ -269,17 +328,24 @@ Item {
         var shouldForce = force === true
 
         if (requestInProgress) {
+            if (shouldForce && requestStartedAtMs > 0 && (Date.now() - requestStartedAtMs) > 12000)
+                requestInProgress = false
+
             if (shouldForce)
                 refreshQueued = true
-            return
+
+            if (requestInProgress)
+                return
         }
 
         if (!api.token || api.token.length === 0) return
         requestInProgress = true
+        requestStartedAtMs = Date.now()
 
         api.fetchTasks(function(fetched) {
             controller.tasks = fetched
             controller.requestInProgress = false
+            controller.requestStartedAtMs = 0
 
             if (controller.refreshQueued) {
                 controller.refreshQueued = false

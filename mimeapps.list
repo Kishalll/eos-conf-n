@@ -62,3 +62,4 @@ x-scheme-handler/chrome=firefox-developer-edition.desktop
 x-scheme-handler/http=firefox-developer-edition.desktop
 x-scheme-handler/https=firefox-developer-edition.desktop
 x-scheme-handler/msteams=teams.desktop
+x-scheme-handler/claude-cli=claude-code-url-handler.desktop
