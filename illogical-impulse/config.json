@@ -440,7 +440,7 @@
                     },
                     {
                         "size": 1,
-                        "type": "notifications"
+                        "type": "idleInhibitor"
                     }
                 ]
             },

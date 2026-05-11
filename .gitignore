@@ -8,6 +8,7 @@ google-chrome/
 thorium-flags.conf
 
 # HEAVY APPS & CACHE 
+opencode/
 wireshark/
 cava/
 heroic/
@@ -90,3 +91,4 @@ kde-material-you-colors/
 pypoetry/
 dconf/
 autostart/
+konsolesshconfig

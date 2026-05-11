@@ -46,7 +46,7 @@ if status is-interactive # Commands to run in interactive sessions can go here
     	sudo -v
     	sudo pacman -Syu --noconfirm
     	yay -Syu --noconfirm
-    	hyprpm update -y
+    	hyprpm update 
     	hyprpm reload
     end
     function cleanup
