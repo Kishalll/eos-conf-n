@@ -47,6 +47,11 @@ Item {
         }
     }
 
+    function appendQuery(url, name, value) {
+        var separator = url.indexOf("?") === -1 ? "?" : "&"
+        return url + separator + encodeURIComponent(name) + "=" + encodeURIComponent(value)
+    }
+
     FileView {
         id: tokenFile
         path: Qt.resolvedUrl("todoist_token")
@@ -72,11 +77,14 @@ Item {
         function fetchPage(cursor, accumulatedItems) {
             var url = apiUrl
             if (cursor)
-                url += "?cursor=" + encodeURIComponent(cursor)
+                url = appendQuery(url, "cursor", cursor)
+            url = appendQuery(url, "_", Date.now().toString())
 
             var xhr = new XMLHttpRequest()
             xhr.open("GET", url)
             xhr.setRequestHeader("Authorization", "Bearer " + token)
+            xhr.setRequestHeader("Cache-Control", "no-cache")
+            xhr.setRequestHeader("Pragma", "no-cache")
 
             xhr.onreadystatechange = function() {
                 if (xhr.readyState !== XMLHttpRequest.DONE) return
@@ -99,9 +107,13 @@ Item {
                     }
 
                     var formatted = []
-                    for (var i = 0; i < merged.length; i++)
+                    for (var i = 0; i < merged.length; i++) {
+                        if (merged[i].is_deleted || merged[i].checked)
+                            continue
                         formatted.push(formatTask(merged[i]))
+                    }
 
+                    console.log("[Todoist] Fetch complete (" + formatted.length + " active tasks)")
                     if (callback) callback(formatted)
                 } catch (e) {
                     console.warn("[Todoist] Failed to parse response: " + e)

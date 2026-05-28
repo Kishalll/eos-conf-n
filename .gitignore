@@ -44,7 +44,8 @@ Cursor/
 cursor/
 git/
 google-chrome-for-testing/
-
+manicode/
+clerk/
 # DEV TOOLS 
 go/                
 flutter/           

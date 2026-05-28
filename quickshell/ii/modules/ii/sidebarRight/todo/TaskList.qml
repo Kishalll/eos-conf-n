@@ -11,6 +11,7 @@ Item {
     id: root
     required property var taskList
     required property var controller
+    property int refreshKey: 0
     signal editRequested(var task)
     property string emptyPlaceholderIcon
     property string emptyPlaceholderText
@@ -153,6 +154,7 @@ Item {
     }
 
     property var visibleSections: {
+        root.refreshKey
         var sections = [
             {
                 key: "overdue",
@@ -605,7 +607,7 @@ Item {
 
                 StyledText {
                     anchors.centerIn: parent
-                    text: Translation.tr("Refresh")
+                    text: root.controller.requestInProgress ? Translation.tr("Refreshing") : Translation.tr("Refresh")
                     color: Appearance.colors.colOnLayer1
                     font.pixelSize: Appearance.font.pixelSize.small
                 }

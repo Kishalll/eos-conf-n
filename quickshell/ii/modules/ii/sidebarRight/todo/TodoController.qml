@@ -9,6 +9,8 @@ Item {
     property bool requestInProgress: false
     property bool refreshQueued: false
     property double requestStartedAtMs: 0
+    property int taskRevision: 0
+    property string lastSyncError: ""
 
     function dueSortTimestamp(task) {
         if (!task || !task.due)
@@ -306,6 +308,7 @@ Item {
             console.warn("[TodoController] Sync failed — will retry on next refresh cycle")
             controller.requestInProgress = false
             controller.requestStartedAtMs = 0
+            controller.lastSyncError = "Sync failed"
             if (controller.refreshQueued) {
                 controller.refreshQueued = false
                 controller.refresh(true)
@@ -341,9 +344,11 @@ Item {
         if (!api.token || api.token.length === 0) return
         requestInProgress = true
         requestStartedAtMs = Date.now()
+        lastSyncError = ""
 
         api.fetchTasks(function(fetched) {
-            controller.tasks = fetched
+            controller.tasks = fetched.slice(0)
+            controller.taskRevision += 1
             controller.requestInProgress = false
             controller.requestStartedAtMs = 0
 
@@ -423,6 +428,7 @@ Item {
             dueString: dueString
         })
         tasks = optimistic
+        taskRevision += 1
 
         api.createTask({
             content: content,
@@ -436,6 +442,7 @@ Item {
                         return createdTask
                     return t
                 })
+                taskRevision += 1
             }
             deferredRefresh.restart()
         })
@@ -472,6 +479,7 @@ Item {
                 dueString: shouldClearDue ? "" : (normalizedDue.length > 0 ? normalizedDue : (t.dueString || ""))
             }
         })
+        taskRevision += 1
 
         var updatePayload = {
             content: newContent,
@@ -493,6 +501,7 @@ Item {
                         return updatedTask
                     return t
                 })
+                taskRevision += 1
             }
             deferredRefresh.restart()
         })
@@ -507,6 +516,7 @@ Item {
             return t
         })
         tasks = updated
+        taskRevision += 1
 
         api.completeTask(taskId, function() {
             deferredRefresh.restart()
@@ -516,6 +526,7 @@ Item {
     // Optimistic delete — yank it from the list immediately.
     function deleteTask(taskId) {
         tasks = tasks.filter(function(t) { return t.id !== taskId })
+        taskRevision += 1
 
         api.deleteTask(taskId, function() {
             deferredRefresh.restart()

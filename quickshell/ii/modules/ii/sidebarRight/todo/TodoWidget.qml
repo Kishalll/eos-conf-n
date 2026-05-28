@@ -156,6 +156,7 @@ Item {
             emptyPlaceholderText: Translation.tr("Nothing here!")
             controller: todoController
             taskList: todoController.unfinishedTasks
+            refreshKey: todoController.taskRevision
             onEditRequested: task => root.openEditDialog(task)
         }
     }
