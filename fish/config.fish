@@ -53,5 +53,6 @@ if status is-interactive # Commands to run in interactive sessions can go here
 	    sudo -v
 	    sudo paccache -rk1
 	    yay -Sc
+	    rm -rf /home/gigabyte/.cache/pip
      end
 end
