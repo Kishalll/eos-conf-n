@@ -21,8 +21,21 @@ Singleton {
     property bool wifiScanning: false
     property bool wifiConnecting: connectProc.running
     property WifiAccessPoint wifiConnectTarget
+    property var pendingPasswordRequests: ({}) // BSSID -> bool map
+    property int lastScanTime: 0
+    property string lastActiveBssid: "" // Cache to smooth over connection transitions
     readonly property list<WifiAccessPoint> wifiNetworks: []
     readonly property WifiAccessPoint active: wifiNetworks.find(n => n.active) ?? null
+    
+    function setPasswordRequest(bssid: string, value: bool): void {
+        const updated = Object.assign({}, pendingPasswordRequests);
+        if (value) {
+            updated[bssid] = true;
+        } else {
+            delete updated[bssid];
+        }
+        pendingPasswordRequests = updated;
+    }
     readonly property list<var> friendlyWifiNetworks: [...wifiNetworks].sort((a, b) => {
         if (a.active && !b.active)
             return -1;
@@ -64,16 +77,17 @@ Singleton {
     }
 
     function rescanWifi(): void {
+        const now = Date.now();
+        if (now - lastScanTime < 5000) return; // Throttle: max once per 5 seconds
         wifiScanning = true;
+        lastScanTime = now;
         rescanProcess.running = true;
     }
 
     function connectToWifiNetwork(accessPoint: WifiAccessPoint): void {
-        accessPoint.askingPassword = false;
+        pendingPasswordRequests = {}; // Clear all previous password requests
         root.wifiConnectTarget = accessPoint;
-        // We use this instead of `nmcli connection up SSID` because this also creates a connection profile
         connectProc.exec(["nmcli", "dev", "wifi", "connect", accessPoint.ssid])
-
     }
 
     function disconnectWifiNetwork(): void {
@@ -85,8 +99,7 @@ Singleton {
     }
 
     function changePassword(network: WifiAccessPoint, password: string, username = ""): void {
-        // TODO: enterprise wifi with username
-        network.askingPassword = false;
+        setPasswordRequest(network.bssid, false);
         changePasswordProc.exec({
             "environment": {
                 "PASSWORD": password,
@@ -108,28 +121,78 @@ Singleton {
         })
         stdout: SplitParser {
             onRead: line => {
-                // print(line)
-                getNetworks.running = true
+                // Don't refresh here - let nmcli monitor handle it
             }
         }
         stderr: SplitParser {
             onRead: line => {
-                // print("err:", line)
-                if (line.includes("Secrets were required")) {
-                    root.wifiConnectTarget.askingPassword = true
+                if (line.includes("Secrets were required") && root.wifiConnectTarget) {
+                    root.setPasswordRequest(root.wifiConnectTarget.bssid, true);
                 }
             }
         }
         onExited: (exitCode, exitStatus) => {
-            root.wifiConnectTarget.askingPassword = (exitCode !== 0)
-            root.wifiConnectTarget = null
+            if (root.wifiConnectTarget) {
+                if (exitCode === 0) {
+                    root.updateImmediate();
+                    connectionSuccessRefresh.restart();
+                } else {
+                    root.setPasswordRequest(root.wifiConnectTarget.bssid, true);
+                }
+                root.wifiConnectTarget = null;
+            }
+        }
+    }
+
+    Timer {
+        id: connectionTimeout
+        interval: 30000
+        repeat: false
+        onTriggered: {
+            if (connectProc.running) {
+                connectProc.running = false;
+                if (root.wifiConnectTarget) {
+                    root.setPasswordRequest(root.wifiConnectTarget.bssid, true);
+                    root.wifiConnectTarget = null;
+                }
+            }
+        }
+    }
+
+    Timer {
+        id: connectionSuccessRefresh
+        interval: 200
+        repeat: true
+        property int attempts: 0
+        onTriggered: {
+            root.updateImmediate();
+            getNetworks.running = true;
+            attempts++;
+            if (attempts >= 15) { // 15 × 200ms = 3 seconds
+                stop();
+                attempts = 0;
+            }
+        }
+        onRunningChanged: {
+            if (running) attempts = 0;
+        }
+    }
+
+    Connections {
+        target: connectProc
+        function onRunningChanged() {
+            if (connectProc.running) {
+                connectionTimeout.restart();
+            } else {
+                connectionTimeout.stop();
+            }
         }
     }
 
     Process {
         id: disconnectProc
         stdout: SplitParser {
-            onRead: getNetworks.running = true
+            onRead: {} // nmcli monitor will handle updates
         }
     }
 
@@ -153,9 +216,46 @@ Singleton {
     }
 
     // Status update
+    property var _pendingState: ({})
+    property int _pendingStateCount: 0
+
+    Timer {
+        id: updateDebouncer
+        interval: 100 // Reduced from 200ms
+        repeat: false
+        onTriggered: {
+            _pendingState = {};
+            _pendingStateCount = 0;
+            updateConnectionType.startCheck();
+            wifiStatusProcess.running = true;
+            updateNetworkName.running = true;
+            updateNetworkStrength.running = true;
+        }
+    }
+
+    function _commitStateIfReady() {
+        if (_pendingStateCount === 4) {
+            if (_pendingState.wifiStatus !== undefined) root.wifiStatus = _pendingState.wifiStatus;
+            if (_pendingState.ethernet !== undefined) root.ethernet = _pendingState.ethernet;
+            if (_pendingState.wifi !== undefined) root.wifi = _pendingState.wifi;
+            if (_pendingState.networkName !== undefined) root.networkName = _pendingState.networkName;
+            if (_pendingState.networkStrength !== undefined) root.networkStrength = _pendingState.networkStrength;
+            if (_pendingState.wifiEnabled !== undefined) root.wifiEnabled = _pendingState.wifiEnabled;
+            _pendingState = {};
+            _pendingStateCount = 0;
+        }
+    }
+
     function update() {
+        updateDebouncer.restart();
+    }
+    
+    function updateImmediate() {
+        updateDebouncer.stop();
+        _pendingState = {};
+        _pendingStateCount = 0;
         updateConnectionType.startCheck();
-        wifiStatusProcess.running = true
+        wifiStatusProcess.running = true;
         updateNetworkName.running = true;
         updateNetworkStrength.running = true;
     }
@@ -185,7 +285,7 @@ Singleton {
         }
         onExited: (exitCode, exitStatus) => {
             const lines = updateConnectionType.buffer.trim().split('\n');
-            const connectivity = lines.pop() // none, limited, full
+            const connectivity = lines.pop()
             let hasEthernet = false;
             let hasWifi = false;
             let wifiStatus = "disconnected";
@@ -213,9 +313,11 @@ Singleton {
                     }
                 }
             });
-            root.wifiStatus = wifiStatus;
-            root.ethernet = hasEthernet;
-            root.wifi = hasWifi;
+            root._pendingState.wifiStatus = wifiStatus;
+            root._pendingState.ethernet = hasEthernet;
+            root._pendingState.wifi = hasWifi;
+            root._pendingStateCount++;
+            root._commitStateIfReady();
         }
     }
 
@@ -225,7 +327,9 @@ Singleton {
         running: true
         stdout: SplitParser {
             onRead: data => {
-                root.networkName = data;
+                root._pendingState.networkName = data;
+                root._pendingStateCount++;
+                root._commitStateIfReady();
             }
         }
     }
@@ -236,7 +340,9 @@ Singleton {
         command: ["sh", "-c", "nmcli -f IN-USE,SIGNAL,SSID device wifi | awk '/^\*/{if (NR!=1) {print $2}}'"]
         stdout: SplitParser {
             onRead: data => {
-                root.networkStrength = parseInt(data);
+                root._pendingState.networkStrength = parseInt(data);
+                root._pendingStateCount++;
+                root._commitStateIfReady();
             }
         }
     }
@@ -251,7 +357,9 @@ Singleton {
         })
         stdout: StdioCollector {
             onStreamFinished: {
-                root.wifiEnabled = text.trim() === "enabled";
+                root._pendingState.wifiEnabled = text.trim() === "enabled";
+                root._pendingStateCount++;
+                root._commitStateIfReady();
             }
         }
     }
@@ -289,29 +397,46 @@ Singleton {
                     if (!existing) {
                         networkMap.set(network.ssid, network);
                     } else {
-                        // Prioritize active/connected networks
                         if (network.active && !existing.active) {
                             networkMap.set(network.ssid, network);
                         } else if (!network.active && !existing.active) {
-                            // If both are inactive, keep the one with better signal
                             if (network.strength > existing.strength) {
                                 networkMap.set(network.ssid, network);
                             }
                         }
-                        // If existing is active and new is not, keep existing
                     }
                 }
 
                 const wifiNetworks = Array.from(networkMap.values());
-
                 const rNetworks = root.wifiNetworks;
 
-                const destroyed = rNetworks.filter(rn => !wifiNetworks.find(n => n.frequency === rn.frequency && n.ssid === rn.ssid && n.bssid === rn.bssid));
-                for (const network of destroyed)
-                    rNetworks.splice(rNetworks.indexOf(network), 1).forEach(n => n.destroy());
+                // Find currently active network
+                const activeNetwork = wifiNetworks.find(n => n.active);
+                if (activeNetwork) {
+                    root.lastActiveBssid = activeNetwork.bssid;
+                }
 
+                // Use BSSID as stable identifier - only destroy truly disappeared networks
+                const newBssids = new Set(wifiNetworks.map(n => n.bssid));
+                const destroyed = rNetworks.filter(rn => !newBssids.has(rn.bssid));
+                
+                for (const network of destroyed) {
+                    // Don't destroy network being connected to
+                    if (root.wifiConnectTarget && network.bssid === root.wifiConnectTarget.bssid) {
+                        continue;
+                    }
+                    rNetworks.splice(rNetworks.indexOf(network), 1).forEach(n => n.destroy());
+                }
+
+                // Update existing or create new
                 for (const network of wifiNetworks) {
-                    const match = rNetworks.find(n => n.frequency === network.frequency && n.ssid === network.ssid && n.bssid === network.bssid);
+                    const match = rNetworks.find(n => n.bssid === network.bssid);
+                    
+                    // If no active network reported but this was last active, keep it active temporarily
+                    if (!activeNetwork && network.bssid === root.lastActiveBssid) {
+                        network.active = true;
+                    }
+                    
                     if (match) {
                         match.lastIpcObject = network;
                     } else {

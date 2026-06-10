@@ -72,6 +72,9 @@ Antigravity/
 Upscayl/
 
 # MISC
+glow/
+kdeconnect/
+okularpartrc
 session/
 kiorc
 okularrc
@@ -93,3 +96,4 @@ pypoetry/
 dconf/
 autostart/
 konsolesshconfig
+kconf_updaterc

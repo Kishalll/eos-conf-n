@@ -9,9 +9,10 @@ import QtQuick.Layouts
 DialogListItem {
     id: root
     required property WifiAccessPoint wifiNetwork
+    readonly property bool askingPassword: Network.pendingPasswordRequests[wifiNetwork.bssid] ?? false
     enabled: !(Network.wifiConnectTarget === root.wifiNetwork && !wifiNetwork?.active)
 
-    active: (wifiNetwork?.askingPassword || wifiNetwork?.active) ?? false
+    active: (askingPassword || wifiNetwork?.active) ?? false
     onClicked: {
         Network.connectToWifiNetwork(wifiNetwork);
     }
@@ -44,7 +45,11 @@ DialogListItem {
             }
             MaterialSymbol {
                 visible: (root.wifiNetwork?.isSecure || root.wifiNetwork?.active) ?? false
-                text: root.wifiNetwork?.active ? "check" : Network.wifiConnectTarget === root.wifiNetwork ? "settings_ethernet" : "lock"
+                text: {
+                    if (root.wifiNetwork?.active) return "check";
+                    if (Network.wifiConnectTarget === root.wifiNetwork) return "settings_ethernet";
+                    return "lock";
+                }
                 iconSize: Appearance.font.pixelSize.larger
                 color: Appearance.colors.colOnSurfaceVariant
             }
@@ -53,7 +58,7 @@ DialogListItem {
         ColumnLayout { // Password
             id: passwordPrompt
             Layout.topMargin: 8
-            visible: root.wifiNetwork?.askingPassword ?? false
+            visible: root.askingPassword
 
             Timer {
                 id: passwordFocusTimer
@@ -97,7 +102,7 @@ DialogListItem {
                 DialogButton {
                     buttonText: Translation.tr("Cancel")
                     onClicked: {
-                        root.wifiNetwork.askingPassword = false;
+                        Network.setPasswordRequest(root.wifiNetwork.bssid, false);
                     }
                 }
 
