@@ -156,6 +156,7 @@ Item {
         dialog: WifiDialog {}
         onShownChanged: {
             if (!shown) return;
+            Network.resetCache(); // Force fresh state when opening
             Network.enableWifi();
             Network.rescanWifi();
         }

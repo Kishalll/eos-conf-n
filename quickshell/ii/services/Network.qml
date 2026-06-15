@@ -260,6 +260,13 @@ Singleton {
         updateNetworkStrength.running = true;
     }
 
+    function resetCache() {
+        lastActiveBssid = "";
+        pendingPasswordRequests = {};
+        updateImmediate();
+        getNetworks.running = true;
+    }
+
     Process {
         id: subscriber
         running: true
@@ -267,6 +274,15 @@ Singleton {
         stdout: SplitParser {
             onRead: root.update()
         }
+        onExited: {
+            // Restart if it dies (can happen after suspend/resume)
+            Qt.callLater(() => { subscriber.running = true; });
+        }
+    }
+
+    Component.onCompleted: {
+        root.updateImmediate();
+        getNetworks.running = true;
     }
 
     Process {

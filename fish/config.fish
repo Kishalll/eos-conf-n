@@ -11,7 +11,13 @@ if status is-interactive # Commands to run in interactive sessions can go here
     # No greeting
     set fish_greeting
 
-    # Use starship
+    # Android SDK paths
+    set -x ANDROID_HOME ~/Android/Sdk
+    fish_add_path $ANDROID_HOME/platform-tools
+    fish_add_path $ANDROID_HOME/tools/bin
+    fish_add_path $ANDROID_HOME/cmdline-tools/latest/bin
+
+    # Starship prompt
     starship init fish | source
     if test -f ~/.local/state/quickshell/user/generated/terminal/sequences.txt
         cat ~/.local/state/quickshell/user/generated/terminal/sequences.txt
