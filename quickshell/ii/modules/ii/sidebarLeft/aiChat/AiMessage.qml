@@ -20,7 +20,49 @@ Rectangle {
     property bool renderMarkdown: true
     property bool editing: false
 
-    property list<var> messageBlocks: StringUtils.splitMarkdownBlocks(root.messageData?.content)
+    // ListModel for message blocks — supports in-place set() so delegates aren't destroyed on every token
+    ListModel {
+        id: blocksModel
+    }
+
+    function updateBlocks(content) {
+        if (!content) {
+            blocksModel.clear();
+            return;
+        }
+        const parsed = StringUtils.splitMarkdownBlocks(content);
+        // Append or update rows without tearing down existing delegates
+        for (let i = 0; i < parsed.length; i++) {
+            const b = parsed[i];
+            if (i < blocksModel.count) {
+                // Same block type: just update content in-place (no delegate recreation)
+                if (blocksModel.get(i).type === b.type) {
+                    blocksModel.setProperty(i, "content", b.content);
+                    blocksModel.setProperty(i, "completed", b.completed ?? true);
+                } else {
+                    // Block type changed (shouldn't normally happen mid-stream, but handle it)
+                    blocksModel.set(i, b);
+                }
+            } else {
+                blocksModel.append(b);
+            }
+        }
+        // Trim excess rows (e.g. after regeneration produces fewer blocks)
+        while (blocksModel.count > parsed.length) {
+            blocksModel.remove(blocksModel.count - 1);
+        }
+    }
+
+    Connections {
+        target: root.messageData
+        function onContentChanged() {
+            root.updateBlocks(root.messageData?.content);
+        }
+    }
+
+    Component.onCompleted: {
+        root.updateBlocks(root.messageData?.content);
+    }
 
     anchors.left: parent?.left
     anchors.right: parent?.right
@@ -279,16 +321,14 @@ Rectangle {
                 FadeLoader {
                     id: loadingIndicatorLoader
                     anchors.centerIn: parent
-                    shown: (root.messageBlocks.length < 1) && (!root.messageData.done)
+                    shown: (blocksModel.count < 1) && (!root.messageData.done)
                     sourceComponent: MaterialLoadingIndicator {
                         loading: true
                     }
                 }
             }
             Repeater {
-                model: ScriptModel {
-                    values: root.messageBlocks
-                }
+                model: blocksModel
                 delegate: DelegateChooser {
                     id: messageDelegate
                     role: "type"
@@ -297,24 +337,24 @@ Rectangle {
                         editing: root.editing
                         renderMarkdown: root.renderMarkdown
                         enableMouseSelection: root.enableMouseSelection
-                        segmentContent: modelData.content
-                        segmentLang: modelData.lang
+                        segmentContent: model.content
+                        segmentLang: model.lang
                         messageData: root.messageData
                     } }
                     DelegateChoice { roleValue: "think"; MessageThinkBlock {
                         editing: root.editing
                         renderMarkdown: root.renderMarkdown
                         enableMouseSelection: root.enableMouseSelection
-                        segmentContent: modelData.content
+                        segmentContent: model.content
                         messageData: root.messageData
                         done: root.messageData?.done ?? false
-                        completed: modelData.completed ?? false
+                        completed: model.completed ?? false
                     } }
                     DelegateChoice { roleValue: "text"; MessageTextBlock {
                         editing: root.editing
                         renderMarkdown: root.renderMarkdown
                         enableMouseSelection: root.enableMouseSelection
-                        segmentContent: modelData.content
+                        segmentContent: model.content
                         messageData: root.messageData
                         done: root.messageData?.done ?? false
                         forceDisableChunkSplitting: root.messageData?.content.includes("```") ?? true

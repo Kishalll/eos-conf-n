@@ -213,7 +213,8 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
         }
 
         // Always scroll to bottom when user sends a message
-        messageListView.positionViewAtEnd();
+        messageListView.enableScrollAnimation = true;
+        messageListView.contentY = Math.max(0, messageListView.contentHeight - messageListView.height);
     }
 
     Process {
@@ -364,14 +365,44 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                 mouseScrollFactor: Config.options.interactions.scrolling.mouseScrollFactor * 1.4
 
                 property int lastResponseLength: 0
+                property bool shouldAutoScroll: false
+
+                Timer {
+                    id: autoScrollTimer
+                    interval: 16 // ~60fps
+                    repeat: true
+                    running: messageListView.shouldAutoScroll
+                    onTriggered: {
+                        if (messageListView.atYEnd) {
+                            messageListView.enableScrollAnimation = false;
+                            const target = Math.max(0, messageListView.contentHeight - messageListView.height);
+                            messageListView.contentY = target;
+                        } else {
+                            messageListView.shouldAutoScroll = false;
+                        }
+                    }
+                }
+
+                Connections {
+                    target: Ai
+                    function onResponseFinished() {
+                        messageListView.shouldAutoScroll = false;
+                        Qt.callLater(() => {
+                            messageListView.enableScrollAnimation = true;
+                        });
+                    }
+                }
+
                 onContentHeightChanged: {
-                    if (atYEnd)
-                        Qt.callLater(positionViewAtEnd);
+                    if (atYEnd && !shouldAutoScroll) {
+                        shouldAutoScroll = true;
+                    }
                 }
                 onCountChanged: {
                     // Auto-scroll when new messages are added
-                    if (atYEnd)
-                        Qt.callLater(positionViewAtEnd);
+                    if (atYEnd) {
+                        shouldAutoScroll = true;
+                    }
                 }
 
                 add: null // Prevent function calls from being janky
