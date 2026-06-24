@@ -53,6 +53,7 @@ devin/
 byobu/
 gcloud/
 bluedevilglobalrc
+btop/
 
 # DEV TOOLS 
 go/                

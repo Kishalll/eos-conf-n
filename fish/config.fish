@@ -60,5 +60,6 @@ if status is-interactive # Commands to run in interactive sessions can go here
 	    sudo paccache -rk1
 	    yay -Sc
 	    rm -rf /home/gigabyte/.cache/pip
+	    npm cache clean --force
      end
 end
