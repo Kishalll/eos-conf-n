@@ -11,6 +11,12 @@ if status is-interactive # Commands to run in interactive sessions can go here
     # No greeting
     set fish_greeting
 
+    # Punctuation-aware word editing (delete/jump by URL/path segment, not whole token)
+    bind ctrl-backspace backward-kill-word
+    bind ctrl-delete    kill-word
+    bind ctrl-left      backward-word
+    bind ctrl-right     forward-word
+
     # Android SDK paths
     set -x ANDROID_HOME ~/Android/Sdk
     fish_add_path $ANDROID_HOME/platform-tools

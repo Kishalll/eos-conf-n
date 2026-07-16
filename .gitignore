@@ -54,7 +54,16 @@ byobu/
 gcloud/
 bluedevilglobalrc
 btop/
-
+.locale_cfg
+EOS-greeter.conf
+Qoder/
+ZCode/
+cmus/
+kwinrulesrc
+mpd/
+qoder/
+spotdl/
+welcome_news_latest_date_file
 # DEV TOOLS 
 go/                
 flutter/           
