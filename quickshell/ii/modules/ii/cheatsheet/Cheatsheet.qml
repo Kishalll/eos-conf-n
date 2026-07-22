@@ -46,9 +46,14 @@ Scope { // Scope
             implicitWidth: cheatsheetBackground.width + Appearance.sizes.elevationMargin * 2
             implicitHeight: cheatsheetBackground.height + Appearance.sizes.elevationMargin * 2
             WlrLayershell.namespace: "quickshell:cheatsheet"
-            // Hyprland 0.49: Focus is always exclusive and setting this breaks mouse focus grab
-            // WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+            WlrLayershell.keyboardFocus: cheatsheetRoot.visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             color: "transparent"
+
+            onVisibleChanged: {
+                if (visible) {
+                    cheatsheetBackground.forceActiveFocus();
+                }
+            }
 
             mask: Region {
                 item: cheatsheetBackground
@@ -71,30 +76,41 @@ Scope { // Scope
             Rectangle {
                 id: cheatsheetBackground
                 anchors.centerIn: parent
+                focus: cheatsheetRoot.visible
                 color: Appearance.colors.colLayer0
                 border.width: 1
                 border.color: Appearance.colors.colLayer0Border
                 radius: Appearance.rounding.windowRounding
                 property real padding: 20
-                implicitWidth: cheatsheetColumnLayout.implicitWidth + padding * 2
-                implicitHeight: cheatsheetColumnLayout.implicitHeight + padding * 2
+                width: parent.width * 0.85
+                height: parent.height * 0.85
 
-                Keys.onPressed: event => { // Esc to close
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onEntered: cheatsheetBackground.forceActiveFocus()
+                    onPressed: mouse => {
+                        cheatsheetBackground.forceActiveFocus();
+                        mouse.accepted = false;
+                    }
+                }
+
+                Keys.onPressed: event => { // Esc to close, Tab to switch
                     if (event.key === Qt.Key_Escape) {
                         cheatsheetRoot.hide();
-                    }
-                    if (event.modifiers === Qt.ControlModifier) {
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Tab) {
+                        tabBar.setCurrentIndex((tabBar.currentIndex + 1) % root.tabButtonList.length);
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Backtab) {
+                        tabBar.setCurrentIndex((tabBar.currentIndex - 1 + root.tabButtonList.length) % root.tabButtonList.length);
+                        event.accepted = true;
+                    } else if (event.modifiers === Qt.ControlModifier) {
                         if (event.key === Qt.Key_PageDown) {
                             tabBar.incrementCurrentIndex();
                             event.accepted = true;
                         } else if (event.key === Qt.Key_PageUp) {
                             tabBar.decrementCurrentIndex();
-                            event.accepted = true;
-                        } else if (event.key === Qt.Key_Tab) {
-                            tabBar.setCurrentIndex((tabBar.currentIndex + 1) % root.tabButtonList.length);
-                            event.accepted = true;
-                        } else if (event.key === Qt.Key_Backtab) {
-                            tabBar.setCurrentIndex((tabBar.currentIndex - 1 + root.tabButtonList.length) % root.tabButtonList.length);
                             event.accepted = true;
                         }
                     }
@@ -106,11 +122,12 @@ Scope { // Scope
                     implicitWidth: 40
                     implicitHeight: 40
                     buttonRadius: Appearance.rounding.full
+                    z: 10
                     anchors {
                         top: parent.top
                         right: parent.right
-                        topMargin: 20
-                        rightMargin: 20
+                        topMargin: 15
+                        rightMargin: 15
                     }
 
                     onClicked: {
@@ -127,7 +144,8 @@ Scope { // Scope
 
                 ColumnLayout { // Real content
                     id: cheatsheetColumnLayout
-                    anchors.centerIn: parent
+                    anchors.fill: parent
+                    anchors.margins: cheatsheetBackground.padding
                     spacing: 10
 
                     Toolbar {
@@ -154,9 +172,6 @@ Scope { // Scope
                             Persistent.states.cheatsheet.tabIndex = currentIndex;
                         }
 
-                        implicitWidth: Math.max.apply(null, contentChildren.map(child => child.implicitWidth || 0))
-                        implicitHeight: Math.max.apply(null, contentChildren.map(child => child.implicitHeight || 0))
-
                         clip: true
                         layer.enabled: true
                         layer.effect: OpacityMask {
@@ -167,7 +182,10 @@ Scope { // Scope
                             }
                         }
 
-                        CheatsheetKeybinds {}
+                        ScrollView {
+                            clip: true
+                            CheatsheetKeybinds {}
+                        }
                         CheatsheetPeriodicTable {}
                     }
                 }

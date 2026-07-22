@@ -65,6 +65,7 @@ qoder/
 spotdl/
 welcome_news_latest_date_file
 # DEV TOOLS 
+StarUML/
 go/                
 flutter/           
 nextjs-nodejs/      
