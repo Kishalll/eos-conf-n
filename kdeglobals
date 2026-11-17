@@ -63,11 +63,11 @@ ForegroundPositive=#00e479
 ForegroundVisited=#ebb2ff
 
 [Colors:Header][Inactive]
-BackgroundAlternate=#1f2020
+BackgroundAlternate=#464746
 BackgroundNormal=#1f2020
 DecorationFocus=#b5c7c5
 DecorationHover=#b5c7c5
-ForegroundActive=#e3e2e1
+ForegroundActive=#8fc9fc
 ForegroundInactive=#919190
 ForegroundLink=#8fc9fc
 ForegroundNegative=#ffb3b4
@@ -157,14 +157,14 @@ widgetStyle=Darkly
 [KFileDialog Settings]
 Allow Expansion=false
 Automatically select filename extension=true
-Breadcrumb Navigation=true
+Breadcrumb Navigation=false
 Decoration position=2
 Show Full Path=false
 Show Inline Previews=true
 Show Preview=false
 Show Speedbar=true
-Show hidden files=false
-Sort by=Name
+Show hidden files=true
+Sort by=Date
 Sort directories first=true
 Sort hidden files last=false
 Sort reversed=false

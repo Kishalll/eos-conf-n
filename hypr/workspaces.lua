@@ -1,0 +1,1 @@
+-- Workspaces configuration (managed by nwg-displays if used)

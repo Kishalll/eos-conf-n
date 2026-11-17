@@ -131,8 +131,8 @@
                 "showOnlyWhenLocked": false,
                 "style": "digital",
                 "styleLocked": "digital",
-                "x": 217.22578125000018,
-                "y": 285.046875
+                "x": 192.96406250000018,
+                "y": 264.37890625
             },
             "weather": {
                 "enable": false,
@@ -241,6 +241,7 @@
         ],
         "monochromeIcons": false,
         "pinnedApps": [
+            "org.kde.dolphin"
         ],
         "pinnedOnStartup": false
     },
